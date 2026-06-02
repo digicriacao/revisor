@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
   :root{
     --bg:#F7F7F8; --surface:#fff; --ink:#222323; --ink-soft:#6a6c6e;
@@ -36,6 +37,9 @@
   .drop small{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-soft)}
   input[type=file]{display:none}
 
+  .uploaded{display:flex;align-items:center;gap:14px;margin-top:18px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .uploaded img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+  .uploaded span{font-size:14px;font-weight:500;word-break:break-all}
   .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
   .btn{font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:15px;background:var(--rosa);color:#fff;border:none;padding:13px 24px;border-radius:10px;cursor:pointer;transition:.15s ease}
   .btn:hover{background:var(--rosa-vivo)}
@@ -123,6 +127,11 @@
     <input type="file" id="file" accept="image/*">
   </label>
 
+  <div class="uploaded" id="uploaded" style="display:none">
+    <img id="previewImg" alt="prévia da arte">
+    <span id="fileName"></span>
+  </div>
+
   <div class="actions">
     <button class="btn" id="run" disabled>Analisar arte</button>
     <button class="btn ghost" id="resetBtn" style="display:none">Nova arte</button>
@@ -153,7 +162,7 @@
   </div>
 
   <footer>
-    <b>Leitura</b> com Gemini (via Edge Function do Supabase) · <b>Banco</b> e <b>imagens</b> no Supabase.<br>
+    <b>Leitura</b> com Gemini (via Edge Function) · <b>Posição dos erros</b> com Tesseract no navegador · <b>Banco/imagens</b> no Supabase.<br>
     Free tier: ~1.500 análises/dia. Para artes de clientes, ative o faturamento no Gemini (continua barato e os dados deixam de ser usados em treino).
   </footer>
 </div>
@@ -183,6 +192,9 @@ fileInput.addEventListener('change',ev=>{ if(ev.target.files[0]) loadFile(ev.tar
 function loadFile(f){
   if(!f.type.startsWith('image/')) return;
   currentFile = f;
+  $('previewImg').src = URL.createObjectURL(f);
+  $('fileName').textContent = f.name;
+  $('uploaded').style.display = 'flex';
   $('run').disabled = false;
   $('resetBtn').style.display='inline-block';
   $('results').classList.remove('show');
@@ -190,6 +202,7 @@ function loadFile(f){
 }
 $('resetBtn').addEventListener('click',()=>{
   currentFile=null; fileInput.value='';
+  $('uploaded').style.display='none';
   $('results').classList.remove('show'); $('run').disabled=true; $('resetBtn').style.display='none';
   window.scrollTo({top:0,behavior:'smooth'});
 });
@@ -203,6 +216,63 @@ function fileToBase64(file){
 }
 function escapeHtml(s){ return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
 
+/* ---------- localização das palavras (Tesseract só p/ posição) ---------- */
+function norm(s){ return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s]/g,'').trim(); }
+function lev(a,b){
+  const m=a.length,n=b.length; if(!m)return n; if(!n)return m;
+  const d=Array.from({length:m+1},(_, i)=>[i,...Array(n).fill(0)]);
+  for(let j=0;j<=n;j++) d[0][j]=j;
+  for(let i=1;i<=m;i++) for(let j=1;j<=n;j++)
+    d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
+  return d[m][n];
+}
+function imageDims(file){
+  return new Promise(res=>{ const i=new Image(); i.onload=()=>{res({w:i.naturalWidth,h:i.naturalHeight}); URL.revokeObjectURL(i.src);}; i.onerror=()=>res({w:0,h:0}); i.src=URL.createObjectURL(file); });
+}
+function flattenWords(data){
+  if(data.words && data.words.length) return data.words.filter(w=>w.bbox).map(w=>({text:w.text,bbox:w.bbox}));
+  const out=[];
+  (data.blocks||[]).forEach(b=>(b.paragraphs||[]).forEach(p=>(p.lines||[]).forEach(l=>(l.words||[]).forEach(w=>{ if(w.bbox) out.push({text:w.text,bbox:w.bbox}); }))));
+  return out;
+}
+function matchWord(token, words, used){
+  token=norm(token); if(token.length<2) return -1;
+  let idx = words.findIndex((w,i)=>!used.has(i) && norm(w.text)===token);
+  if(idx<0) idx = words.findIndex((w,i)=>!used.has(i) && token.length>=3 && norm(w.text).includes(token));
+  if(idx<0){
+    let best=-1, bd=99, tol=Math.max(1,Math.floor(token.length*0.34));
+    words.forEach((w,i)=>{ if(used.has(i))return; const d=lev(norm(w.text),token); if(d<bd && d<=tol){bd=d;best=i;} });
+    idx=best;
+  }
+  return idx;
+}
+function locateError(e, words, dims){
+  if(words.length && dims.w){
+    const tokens = norm(e.errado).split(/\s+/).filter(Boolean);
+    const used=new Set(); const boxes=[];
+    tokens.forEach(t=>{ const i=matchWord(t,words,used); if(i>=0){ used.add(i); boxes.push(words[i].bbox); } });
+    if(boxes.length){
+      const x0=Math.min(...boxes.map(b=>b.x0)), y0=Math.min(...boxes.map(b=>b.y0));
+      const x1=Math.max(...boxes.map(b=>b.x1)), y1=Math.max(...boxes.map(b=>b.y1));
+      return { left:x0/dims.w*100, top:y0/dims.h*100, w:(x1-x0)/dims.w*100, h:(y1-y0)/dims.h*100 };
+    }
+  }
+  // fallback: caixa aproximada do Gemini
+  if(e.box_2d && e.box_2d.length===4){ const [y0,x0,y1,x1]=e.box_2d; return { left:x0/10, top:y0/10, w:(x1-x0)/10, h:(y1-y0)/10 }; }
+  return null;
+}
+async function posicionarErros(file, erros){
+  try{
+    $('statusText').textContent='Localizando os erros na arte…';
+    const dims = await imageDims(file);
+    const { data:od } = await Tesseract.recognize(file, 'por');
+    const words = flattenWords(od);
+    return erros.map(e=>({ ...e, pct: locateError(e, words, dims) }));
+  }catch(err){
+    return erros.map(e=>({ ...e, pct: locateError(e, [], {w:0,h:0}) }));
+  }
+}
+
 $('run').addEventListener('click', analyze);
 async function analyze(){
   if(!currentFile || !supabase) return;
@@ -214,10 +284,17 @@ async function analyze(){
     const { data, error } = await supabase.functions.invoke('quick-api', {
       body:{ image:b64, mime:currentFile.type }
     });
-    if(error) throw new Error('Falha ao analisar: '+error.message);
+    if(error){
+      let detalhe = error.message || String(error);
+      try{ if(error.context && error.context.status) detalhe += ` (HTTP ${error.context.status})`; }catch(e){}
+      throw new Error('Falha ao analisar: '+detalhe);
+    }
     if(data && data.error) throw new Error(data.error);
     const erros = (data && data.erros) || [];
     const textoCorrigido = (data && data.texto_corrigido) || '';
+
+    // localiza cada erro na arte (Tesseract só p/ posição) e guarda a caixa em %
+    const errosFinal = await posicionarErros(currentFile, erros);
 
     $('statusText').textContent='Salvando no banco…';
     const path = `${Date.now()}-${currentFile.name.replace(/[^\w.\-]/g,'_')}`;
@@ -225,10 +302,10 @@ async function analyze(){
     let imageUrl = null;
     if(!up.error){ imageUrl = supabase.storage.from('artes').getPublicUrl(path).data.publicUrl; }
 
-    await supabase.from('revisoes').insert({ texto_corrigido:textoCorrigido, erros, image_url:imageUrl });
+    await supabase.from('revisoes').insert({ texto_corrigido:textoCorrigido, erros:errosFinal, image_url:imageUrl });
 
     const localUrl = URL.createObjectURL(currentFile);
-    renderResults(localUrl, textoCorrigido, erros);
+    renderResults(localUrl, textoCorrigido, errosFinal);
     $('status').classList.remove('show');
     loadHistory();
   }catch(err){
@@ -241,11 +318,12 @@ function drawBoxes(erros){
   const canvas = $('canvas');
   canvas.querySelectorAll('.box').forEach(b=>b.remove());
   erros.forEach((e,i)=>{
-    const b = e.box_2d; if(!b || b.length!==4) return;
-    const [y0,x0,y1,x1]=b;
+    let p = e.pct;
+    if(!p && e.box_2d && e.box_2d.length===4){ const [y0,x0,y1,x1]=e.box_2d; p={left:x0/10,top:y0/10,w:(x1-x0)/10,h:(y1-y0)/10}; }
+    if(!p) return;
     const div=document.createElement('div'); div.className='box';
-    div.style.left=(x0/10)+'%'; div.style.top=(y0/10)+'%';
-    div.style.width=((x1-x0)/10)+'%'; div.style.height=((y1-y0)/10)+'%';
+    div.style.left=p.left+'%'; div.style.top=p.top+'%';
+    div.style.width=p.w+'%'; div.style.height=p.h+'%';
     div.innerHTML=`<span class="num">${i+1}</span><span class="tip"><s>${escapeHtml(e.errado)}</s> → <b>${escapeHtml(e.correto)}</b></span>`;
     canvas.appendChild(div);
   });
