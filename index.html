@@ -35,16 +35,33 @@
   .logo{height:34px;width:auto;display:block}
   .logo-fallback{font-weight:800;font-size:26px;color:var(--rosa);letter-spacing:-.03em;display:none}
   .divider{width:1px;height:26px;background:var(--line)}
-  .sofia-name{font-weight:800;font-size:22px;letter-spacing:-.02em;line-height:1}
+  .sofia-name{font-weight:800;font-size:36px;letter-spacing:-.03em;line-height:1}
   .sofia-name .dot{color:var(--rosa)}
-  .sofia-role{font-size:13px;color:var(--ink-soft);font-weight:400;margin-top:1px}
+  .sofia-role{font-size:13px;color:var(--ink-soft);font-weight:400;margin-top:3px}
+
+  /* ---- mascote Sofia ---- */
+  .intro-section{position:relative}
+  .sofia-mascot{display:none}
+  .sofia-line{display:none}
+  @media(min-width:780px){
+    .intro-section{min-height:430px;padding-right:0}
+    .sofia-mascot{
+      display:block;position:absolute;
+      right:-10px;top:-10px;
+      width:340px;height:auto;
+      z-index:3;
+      pointer-events:none;user-select:none;
+      filter:drop-shadow(0 6px 20px rgba(234,3,86,.08));
+    }
+  }
+  .sofia-line{display:block;height:3px;background:var(--rosa);border-radius:2px;margin-top:26px}
   .sub{color:var(--ink-soft);font-size:15px;margin:14px 0 28px;max-width:56ch}
 
   .warn{display:none;background:#fff7e6;border:1px solid #f0c674;color:#8a6d1b;border-radius:10px;padding:12px 16px;font-size:13px;margin-bottom:22px}
   .warn.show{display:block}
   .warn code{font-family:'Poppins',sans-serif;font-size:12px;background:rgba(0,0,0,.05);padding:1px 5px;border-radius:4px}
 
-  .drop{display:block;width:100%;border:2px dashed var(--line);border-radius:14px;padding:48px 28px;text-align:center;cursor:pointer;background:var(--surface);transition:.18s ease}
+  .drop{display:block;width:100%;border:2px dashed var(--line);border-radius:14px;padding:48px 28px;text-align:center;cursor:pointer;background:var(--surface);transition:.18s ease;position:relative;z-index:1}
   .drop:hover,.drop.over{border-color:var(--rosa);background:var(--rosa-fundo)}
   .drop .icon{display:flex;align-items:center;justify-content:center;width:46px;height:46px;margin:0 auto 12px;border-radius:50%;background:var(--rosa);color:#fff;font-size:26px;font-weight:700;line-height:1}
   .drop strong{display:block;font-weight:600;font-size:17px;margin-bottom:4px}
@@ -140,35 +157,38 @@
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <img src="logo-rosa.png" alt="Digi" class="logo" onerror="this.style.display='none';document.getElementById('logoFb').style.display='inline'">
-    <span class="logo-fallback" id="logoFb">digi</span>
-    <div class="divider"></div>
-    <div>
+  <div class="intro-section">
+    <img class="sofia-mascot" src="SOFIA.png" alt="Sof.ia">
+
+    <header>
+      <img src="logo-rosa.png" alt="Digi" class="logo" onerror="this.style.display='none';document.getElementById('logoFb').style.display='inline'">
+      <span class="logo-fallback" id="logoFb">digi</span>
+      <div class="divider"></div>
       <div class="sofia-name">Sof<span class="dot">.</span>ia</div>
-      <div class="sofia-role">revisora de artes publicitárias</div>
+    </header>
+    <p class="sub">Oi! Eu sou a <strong>Sof.ia</strong> — fui treinada para revisar textos de peças publicitárias. Me manda a arte e eu leio o texto, aponto os erros direto na imagem e te entrego tudo corrigido, pronto para aprovar. 🎯</p>
+
+    <div class="warn" id="cfgWarn">⚠ Configure suas chaves do Supabase no início do bloco de script (<code>SUPABASE_URL</code> e <code>SUPABASE_ANON_KEY</code>) para a ferramenta funcionar.</div>
+
+    <label class="drop" id="drop">
+      <span class="icon">+</span>
+      <strong>Me manda a arte aqui</strong>
+      <small>ou clique para escolher · png, jpg, webp</small>
+      <input type="file" id="file" accept="image/*">
+    </label>
+
+    <div class="uploaded" id="uploaded" style="display:none">
+      <img id="previewImg" alt="prévia da arte">
+      <span id="fileName"></span>
     </div>
-  </header>
-  <p class="sub">Oi! Eu sou a <strong>Sof.ia</strong> — fui treinada para revisar textos de peças publicitárias. Me manda a arte e eu leio o texto, aponto os erros direto na imagem e te entrego tudo corrigido, pronto para aprovar. 🎯</p>
 
-  <div class="warn" id="cfgWarn">⚠ Configure suas chaves do Supabase no início do bloco de script (<code>SUPABASE_URL</code> e <code>SUPABASE_ANON_KEY</code>) para a ferramenta funcionar.</div>
+    <div class="actions">
+      <button class="btn" id="run" disabled>Analisar com a Sof.ia</button>
+      <button class="btn ghost" id="resetBtn" style="display:none">Enviar outra arte</button>
+    </div>
 
-  <label class="drop" id="drop">
-    <span class="icon">+</span>
-    <strong>Me manda a arte aqui</strong>
-    <small>ou clique para escolher · png, jpg, webp</small>
-    <input type="file" id="file" accept="image/*">
-  </label>
-
-  <div class="uploaded" id="uploaded" style="display:none">
-    <img id="previewImg" alt="prévia da arte">
-    <span id="fileName"></span>
-  </div>
-
-  <div class="actions">
-    <button class="btn" id="run" disabled>Analisar com a Sof.ia</button>
-    <button class="btn ghost" id="resetBtn" style="display:none">Enviar outra arte</button>
-  </div>
+    <div class="sofia-line"></div>
+  </div><!-- /intro-section -->
 
   <div class="status" id="status"><div class="txt" id="statusText">Analisando…</div><div class="bar"><i></i></div></div>
   <div class="err-msg" id="errMsg"></div>
