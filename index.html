@@ -83,7 +83,15 @@
   .box .tip s{color:#ff9bbd}.box .tip b{color:#7ee2ab;font-weight:600}
   .box:hover .tip{opacity:1}
 
-  .corrected{font-size:18px;line-height:1.65;white-space:pre-wrap}
+  .corrected{line-height:1.6}
+  .bloco{margin-bottom:14px}
+  .bloco:last-child{margin-bottom:0}
+  .bloco-titulo{font-size:21px;font-weight:800;letter-spacing:-.01em;color:var(--ink)}
+  .bloco-subtitulo{font-size:17px;font-weight:700;color:var(--ink)}
+  .bloco-corpo{font-size:15px;color:var(--ink-soft);line-height:1.65}
+  .bloco-preco{font-size:19px;font-weight:700;color:var(--rosa)}
+  .bloco-cta{font-size:15px;font-weight:700;background:var(--rosa-fundo);color:var(--rosa);padding:10px 14px;border-radius:8px;display:inline-block;letter-spacing:.01em}
+  .bloco-nota{font-size:12px;color:var(--ink-soft);border-top:1px solid var(--line);padding-top:10px;margin-top:6px;line-height:1.55}
   .errlist{list-style:none}
   .errlist li{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
   .errlist li:last-child{border:none}
@@ -195,6 +203,27 @@ else document.getElementById('cfgWarn').classList.add('show');
 
 const $ = id => document.getElementById(id);
 let currentFile = null;
+let currentTexto = '';
+
+/* ---------- renderização do texto corrigido em blocos ---------- */
+function guessType(t){
+  t = t.trim();
+  if (/^\*|^\(/.test(t) || /prazo|parcela|válida|imagem|frete|localidade|ilustra/i.test(t)) return 'nota';
+  if (t === t.toUpperCase() && t.length < 100 && /[A-ZÀÁÂÃÉÊÍÓÔÕÚ]/.test(t)) return 'titulo';
+  if (/R\$/.test(t) && t.length < 120) return 'preco';
+  if (/compre|aproveite|garanta|adquira|acesse|cadastre|baixe|saiba mais/i.test(t) && t.length < 150) return 'cta';
+  return 'corpo';
+}
+function renderBlocos(blocos){
+  return (blocos||[]).filter(b=>b.texto&&b.texto.trim())
+    .map(b=>`<div class="bloco bloco-${b.tipo||'corpo'}">${escapeHtml(b.texto)}</div>`)
+    .join('');
+}
+function renderTextoPlano(texto){
+  return (texto||'').split(/\n\n+/).filter(Boolean)
+    .map(p=>`<div class="bloco bloco-${guessType(p)}">${escapeHtml(p)}</div>`)
+    .join('');
+}
 
 const drop = $('drop'), fileInput = $('file');
 ['dragenter','dragover'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add('over')}));
@@ -304,7 +333,10 @@ async function analyze(){
     }
     if(data && data.error) throw new Error(data.error);
     const erros = (data && data.erros) || [];
-    const textoCorrigido = (data && data.texto_corrigido) || '';
+    const blocos = (data && data.blocos) || [];
+    const textoCorrigido = blocos.length
+      ? blocos.map(b=>b.texto||'').filter(Boolean).join('\n\n')
+      : ((data && data.texto_corrigido) || '');
 
     // localiza cada erro na arte (Tesseract só p/ posição) e guarda a caixa em %
     const errosFinal = await posicionarErros(currentFile, erros);
@@ -318,7 +350,7 @@ async function analyze(){
     await supabase.from('revisoes').insert({ texto_corrigido:textoCorrigido, erros:errosFinal, image_url:imageUrl });
 
     const localUrl = URL.createObjectURL(currentFile);
-    renderResults(localUrl, textoCorrigido, errosFinal);
+    renderResults(localUrl, errosFinal, blocos, textoCorrigido);
     $('status').classList.remove('show');
     loadHistory();
   }catch(err){
@@ -342,13 +374,16 @@ function drawBoxes(erros){
   });
 }
 
-function renderResults(imgUrl, corrected, erros){
+function renderResults(imgUrl, erros, blocos, textoPlano){
   const img = $('artImg');
   img.onload = ()=>drawBoxes(erros);
   img.src = imgUrl;
   if(img.complete && img.naturalWidth) drawBoxes(erros);
 
-  $('corrected').textContent = corrected;
+  currentTexto = textoPlano || '';
+  const corrDiv = $('corrected');
+  corrDiv.innerHTML = (blocos && blocos.length) ? renderBlocos(blocos) : renderTextoPlano(textoPlano);
+
   const n=erros.length, tag=$('errCount');
   tag.textContent = n===0 ? 'sem erros' : (n+(n===1?' erro':' erros'));
   tag.className = n===0 ? 'tag zero' : 'tag';
@@ -368,7 +403,7 @@ function renderResults(imgUrl, corrected, erros){
 }
 
 $('copyBtn').addEventListener('click',async()=>{
-  try{ await navigator.clipboard.writeText($('corrected').textContent); }catch(e){}
+  try{ await navigator.clipboard.writeText(currentTexto); }catch(e){}
   $('copied').classList.add('show'); setTimeout(()=>$('copied').classList.remove('show'),1500);
 });
 
@@ -396,7 +431,7 @@ async function loadHistory(){
       <button class="hist-del" title="Remover">×</button>`;
     item.addEventListener('click',ev=>{
       if(ev.target.classList.contains('hist-del')){ ev.stopPropagation(); removeHistory(h.id); return; }
-      if(h.image_url) renderResults(h.image_url, h.texto_corrigido||'', h.erros||[]);
+      if(h.image_url) renderResults(h.image_url, h.erros||[], null, h.texto_corrigido||'');
     });
     list.appendChild(item);
   });
