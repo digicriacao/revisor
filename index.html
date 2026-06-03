@@ -3,7 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Revisor · Digi</title>
+<title>Sof.ia · Revisora de Artes · Digi</title>
+<!-- Open Graph / compartilhamento -->
+<meta property="og:type"        content="website">
+<meta property="og:url"         content="https://digicriacao.github.io/revisor/">
+<meta property="og:title"       content="Sof.ia · Revisora de Artes da Digi">
+<meta property="og:description" content="Oi! Eu sou a Sof.ia, sua revisora inteligente de artes publicitárias. Me manda a peça e eu identifico erros de ortografia, gramática e concordância — marcados direto na imagem.">
+<meta property="og:image"       content="https://digicriacao.github.io/revisor/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height"content="630">
+<!-- Twitter / X -->
+<meta name="twitter:card"        content="summary_large_image">
+<meta name="twitter:title"       content="Sof.ia · Revisora de Artes da Digi">
+<meta name="twitter:description" content="Revisora inteligente de artes publicitárias com IA.">
+<meta name="twitter:image"       content="https://digicriacao.github.io/revisor/og-image.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='11' fill='%23EA0356'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,8 +35,9 @@
   .logo{height:34px;width:auto;display:block}
   .logo-fallback{font-weight:800;font-size:26px;color:var(--rosa);letter-spacing:-.03em;display:none}
   .divider{width:1px;height:26px;background:var(--line)}
-  h1{font-weight:700;font-size:20px;letter-spacing:-.01em}
-  h1 span{color:var(--ink-soft);font-weight:500}
+  .sofia-name{font-weight:800;font-size:22px;letter-spacing:-.02em;line-height:1}
+  .sofia-name .dot{color:var(--rosa)}
+  .sofia-role{font-size:13px;color:var(--ink-soft);font-weight:400;margin-top:1px}
   .sub{color:var(--ink-soft);font-size:15px;margin:14px 0 28px;max-width:56ch}
 
   .warn{display:none;background:#fff7e6;border:1px solid #f0c674;color:#8a6d1b;border-radius:10px;padding:12px 16px;font-size:13px;margin-bottom:22px}
@@ -130,15 +144,18 @@
     <img src="logo-rosa.png" alt="Digi" class="logo" onerror="this.style.display='none';document.getElementById('logoFb').style.display='inline'">
     <span class="logo-fallback" id="logoFb">digi</span>
     <div class="divider"></div>
-    <h1>Revisor <span>· leitura inteligente de artes</span></h1>
+    <div>
+      <div class="sofia-name">Sof<span class="dot">.</span>ia</div>
+      <div class="sofia-role">revisora de artes publicitárias</div>
+    </div>
   </header>
-  <p class="sub">Envie uma arte. A IA lê o texto, aponta os erros direto na imagem e devolve a versão corrigida. Tudo fica salvo no histórico.</p>
+  <p class="sub">Oi! Eu sou a <strong>Sof.ia</strong> — fui treinada para revisar textos de peças publicitárias. Me manda a arte e eu leio o texto, aponto os erros direto na imagem e te entrego tudo corrigido, pronto para aprovar. 🎯</p>
 
   <div class="warn" id="cfgWarn">⚠ Configure suas chaves do Supabase no início do bloco de script (<code>SUPABASE_URL</code> e <code>SUPABASE_ANON_KEY</code>) para a ferramenta funcionar.</div>
 
   <label class="drop" id="drop">
     <span class="icon">+</span>
-    <strong>Solte uma arte aqui</strong>
+    <strong>Me manda a arte aqui</strong>
     <small>ou clique para escolher · png, jpg, webp</small>
     <input type="file" id="file" accept="image/*">
   </label>
@@ -149,8 +166,8 @@
   </div>
 
   <div class="actions">
-    <button class="btn" id="run" disabled>Analisar arte</button>
-    <button class="btn ghost" id="resetBtn" style="display:none">Nova arte</button>
+    <button class="btn" id="run" disabled>Analisar com a Sof.ia</button>
+    <button class="btn ghost" id="resetBtn" style="display:none">Enviar outra arte</button>
   </div>
 
   <div class="status" id="status"><div class="txt" id="statusText">Analisando…</div><div class="bar"><i></i></div></div>
@@ -160,31 +177,31 @@
     <div class="results-grid">
       <div class="col-art">
         <div class="panel">
-          <div class="panel-head"><span class="label">Erros apontados na arte</span><span class="tag" id="errCount">0</span></div>
+          <div class="panel-head"><span class="label">O que encontrei na arte</span><span class="tag" id="errCount">0</span></div>
           <div class="canvas" id="canvas"><img id="artImg" alt="arte analisada"></div>
         </div>
       </div>
       <div class="col-side">
         <div class="panel" id="errPanel">
-          <div class="panel-head"><span class="label">Lista de ajustes</span></div>
+          <div class="panel-head"><span class="label">Meus ajustes</span></div>
           <ul class="errlist" id="errList"></ul>
         </div>
       </div>
     </div>
     <div class="panel corrected-panel">
-      <div class="panel-head"><span class="label">Texto corrigido</span><span class="copied" id="copied">copiado!</span></div>
+      <div class="panel-head"><span class="label">Texto corrigido pela Sof.ia</span><span class="copied" id="copied">copiado!</span></div>
       <div class="corrected" id="corrected"></div>
       <div class="actions"><button class="btn" id="copyBtn">Copiar texto corrigido</button></div>
     </div>
   </div>
 
   <div class="history">
-    <div class="history-head"><h2>Histórico de revisões <span class="count" id="histCount"></span></h2></div>
+    <div class="history-head"><h2>Minhas revisões anteriores <span class="count" id="histCount"></span></h2></div>
     <div id="histList"></div>
   </div>
 
   <footer>
-    <b>Leitura</b> com Gemini (via Edge Function) · <b>Posição dos erros</b> com Tesseract no navegador · <b>Banco/imagens</b> no Supabase.
+    <b>Sof.ia</b> · Revisora de artes publicitárias by Digi · Powered by Gemini &amp; Supabase
   </footer>
 </div>
 
@@ -305,7 +322,7 @@ function locateError(e, words, dims){
 }
 async function posicionarErros(file, erros){
   try{
-    $('statusText').textContent='Localizando os erros na arte…';
+    $('statusText').textContent='Identificando onde estão os erros…';
     const dims = await imageDims(file);
     const { data:od } = await Tesseract.recognize(file, 'por');
     const words = flattenWords(od);
@@ -319,7 +336,7 @@ $('run').addEventListener('click', analyze);
 async function analyze(){
   if(!currentFile || !supabase) return;
   $('run').disabled=true; $('results').classList.remove('show'); $('errMsg').classList.remove('show');
-  $('status').classList.add('show'); $('statusText').textContent='A IA está lendo a arte…';
+  $('status').classList.add('show'); $('statusText').textContent='Estou lendo a arte…';
   try{
     const b64 = await fileToBase64(currentFile);
 
@@ -341,7 +358,7 @@ async function analyze(){
     // localiza cada erro na arte (Tesseract só p/ posição) e guarda a caixa em %
     const errosFinal = await posicionarErros(currentFile, erros);
 
-    $('statusText').textContent='Salvando no banco…';
+    $('statusText').textContent='Salvando no histórico…';
     const path = `${Date.now()}-${currentFile.name.replace(/[^\w.\-]/g,'_')}`;
     const up = await supabase.storage.from('artes').upload(path, currentFile, { upsert:false });
     let imageUrl = null;
