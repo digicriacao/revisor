@@ -43,18 +43,18 @@
   .intro-section{position:relative}
   .sofia-mascot{display:none}
   .sofia-line{display:none}
-  @media(min-width:780px){
-    .intro-section{min-height:430px;padding-right:0}
+  @media(min-width:960px){
+    .intro-section{min-height:430px}
     .sofia-mascot{
       display:block;position:absolute;
-      right:-10px;top:-10px;
+      right:-10px;bottom:8px;top:auto;
       width:340px;height:auto;
       z-index:3;
       pointer-events:none;user-select:none;
       filter:drop-shadow(0 6px 20px rgba(234,3,86,.08));
     }
+    .sofia-line{display:block;height:3px;background:var(--rosa);border-radius:2px;margin-top:26px}
   }
-  .sofia-line{display:block;height:3px;background:var(--rosa);border-radius:2px;margin-top:26px}
   .sub{color:var(--ink-soft);font-size:15px;margin:14px 0 28px;max-width:56ch}
 
   .warn{display:none;background:#fff7e6;border:1px solid #f0c674;color:#8a6d1b;border-radius:10px;padding:12px 16px;font-size:13px;margin-bottom:22px}
