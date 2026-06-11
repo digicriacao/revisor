@@ -152,6 +152,7 @@
 
   footer{margin-top:54px;border-top:1px solid var(--line);padding-top:18px;font-family:'Poppins',sans-serif;font-size:11px;color:var(--ink-soft);line-height:1.9}
   footer b{color:var(--ink)}
+  footer a{color:var(--rosa);text-decoration:none;font-weight:600}
   @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 </style>
 </head>
@@ -221,7 +222,8 @@
   </div>
 
   <footer>
-    <b>Sof.ia</b> · Revisora de artes publicitárias by Digi · Powered by Gemini &amp; Supabase
+    <b>Sof.ia</b> · Revisora de artes publicitárias by Digi · Powered by Gemini &amp; Supabase<br>
+    <a href="revisar-doc.html">📄 Revisar PDF ou PPTX →</a>
   </footer>
 </div>
 
@@ -392,7 +394,10 @@ async function analyze(){
       throw new Error('Falha ao analisar: '+detalhe);
     }
     if(data && data.error) throw new Error(data.error);
-    const erros = (data && data.erros) || [];
+
+    // remove falsos positivos: erros onde errado === correto após normalização Unicode
+    function normStr(s){ return (s||'').normalize('NFC').trim().toLowerCase(); }
+    const erros = ((data && data.erros) || []).filter(e => normStr(e.errado) !== normStr(e.correto));
     const blocos = (data && data.blocos) || [];
     const textoCorrigido = blocos.length
       ? blocos.map(b=>b.texto||'').filter(Boolean).join('\n\n')

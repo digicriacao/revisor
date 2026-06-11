@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sof.ia · Revisão de Documentos · Digi</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='11' fill='%23EA0356'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- pdf.js: renderiza páginas do PDF como canvas -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<!-- pdf-lib: gera PDF anotado com os erros destacados -->
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<!-- JSZip: descompacta o .pptx para extrair texto dos slides -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root{
+    --bg:#F7F7F8;--surface:#fff;--ink:#222323;--ink-soft:#6a6c6e;
+    --line:#DBDCDD;--rosa:#EA0356;--rosa-vivo:#FF0066;--rosa-fundo:#fdeef3;
+    --green:#1f8a5b;--green-soft:#e6f4ec;--shadow:rgba(34,35,35,.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--ink);font-size:16px;line-height:1.5;padding:32px 20px 90px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:820px;margin:0 auto}
+
+  /* header */
+  header{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+  .logo{height:34px;width:auto;display:block}
+  .logo-fallback{font-weight:800;font-size:26px;color:var(--rosa);letter-spacing:-.03em;display:none}
+  .divider{width:1px;height:26px;background:var(--line)}
+  .sofia-name{font-weight:800;font-size:36px;letter-spacing:-.03em;line-height:1}
+  .sofia-name .dot{color:var(--rosa)}
+  .nav-back{font-size:13px;color:var(--ink-soft);text-decoration:none;margin-left:auto;font-weight:500;padding:6px 14px;border:1.5px solid var(--line);border-radius:8px;transition:.15s}
+  .nav-back:hover{border-color:var(--rosa);color:var(--rosa)}
+  .sub{color:var(--ink-soft);font-size:15px;margin:14px 0 28px;max-width:56ch}
+
+  /* tipo badge */
+  .tipo-badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px;letter-spacing:.03em;text-transform:uppercase;margin-bottom:18px}
+  .tipo-badge.pdf{background:#fff0f0;color:#c0392b;border:1px solid #f5c6c6}
+  .tipo-badge.pptx{background:#fff4e6;color:#e67e22;border:1px solid #f5d7a6}
+  .tipo-badge.hidden{display:none}
+
+  /* drop */
+  .drop{display:block;width:100%;border:2px dashed var(--line);border-radius:14px;padding:48px 28px;text-align:center;cursor:pointer;background:var(--surface);transition:.18s ease}
+  .drop:hover,.drop.over{border-color:var(--rosa);background:var(--rosa-fundo)}
+  .drop .icon{display:flex;align-items:center;justify-content:center;width:46px;height:46px;margin:0 auto 12px;border-radius:50%;background:var(--rosa);color:#fff;font-size:26px;font-weight:700;line-height:1}
+  .drop strong{display:block;font-weight:600;font-size:17px;margin-bottom:4px}
+  .drop small{font-family:'Poppins',sans-serif;font-size:12px;color:var(--ink-soft)}
+  input[type=file]{display:none}
+
+  /* file info */
+  .file-info{display:none;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin-top:18px;display:none;align-items:center;gap:14px}
+  .file-info.show{display:flex}
+  .file-icon{width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+  .file-icon.pdf{background:#fff0f0}
+  .file-icon.pptx{background:#fff4e6}
+  .file-name{font-weight:600;font-size:15px;word-break:break-all}
+  .file-meta{font-size:13px;color:var(--ink-soft);margin-top:2px}
+
+  /* botões */
+  .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+  .btn{font-family:'Poppins',sans-serif;font-weight:600;font-size:15px;background:var(--rosa);color:#fff;border:none;padding:13px 24px;border-radius:10px;cursor:pointer;transition:.15s ease}
+  .btn:hover{background:var(--rosa-vivo)}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+  .btn.ghost:hover{border-color:var(--ink)}
+  .btn.green{background:var(--green)}
+  .btn.green:hover{background:#17704a}
+
+  /* status */
+  .status{display:none;margin-top:24px}
+  .status.show{display:block}
+  .status .txt{font-size:13px;color:var(--ink-soft);margin-bottom:8px}
+  .bar-wrap{height:6px;background:#ececed;border-radius:4px;overflow:hidden}
+  .bar-fill{height:100%;width:0;background:var(--rosa);border-radius:4px;transition:width .3s ease}
+
+  /* erro msg */
+  .err-msg{display:none;margin-top:18px;background:var(--rosa-fundo);border:1px solid var(--rosa);color:var(--rosa);padding:12px 16px;border-radius:10px;font-size:14px;font-weight:500}
+  .err-msg.show{display:block}
+
+  /* aviso de limite */
+  .warn-limit{display:none;background:#fff7e6;border:1px solid #f0c674;color:#8a6d1b;padding:12px 16px;border-radius:10px;font-size:13px;margin-top:14px}
+  .warn-limit.show{display:block}
+
+  /* resultados */
+  .results{display:none;margin-top:34px;animation:fade .4s ease}
+  .results.show{display:block}
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px 24px;margin-bottom:18px}
+  .panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px}
+  .panel-head .label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft)}
+  .tag{font-size:11px;background:var(--rosa);color:#fff;padding:4px 10px;border-radius:20px;white-space:nowrap;font-weight:600}
+  .tag.zero{background:var(--green)}
+  .tag.warning{background:#e67e22}
+
+  /* stats */
+  .stats{display:flex;gap:24px;flex-wrap:wrap;margin-bottom:18px}
+  .stat{text-align:center}
+  .stat .n{font-size:32px;font-weight:800;color:var(--rosa);line-height:1}
+  .stat .l{font-size:13px;color:var(--ink-soft);margin-top:2px}
+  .stat.ok .n{color:var(--green)}
+
+  /* lista de erros por página */
+  .page-group{margin-bottom:16px}
+  .page-label{font-size:12px;font-weight:700;color:var(--ink-soft);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+  .errlist{list-style:none}
+  .errlist li{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+  .errlist li:last-child{border:none}
+  .errlist .idx{width:20px;height:20px;flex-shrink:0;background:var(--rosa);color:#fff;border-radius:50%;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .errlist .swap{font-size:13px;font-family:'Poppins',sans-serif}
+  .errlist .from{color:var(--rosa);text-decoration:line-through}
+  .errlist .to{color:var(--green);font-weight:600}
+  .errlist .arrow{color:var(--ink-soft);margin:0 6px}
+  .errlist .why{display:block;font-size:12px;color:var(--ink-soft);margin-top:2px}
+
+  /* download area */
+  .download-area{text-align:center;padding:24px}
+  .download-icon{font-size:40px;margin-bottom:8px}
+  .download-desc{font-size:14px;color:var(--ink-soft);margin-bottom:16px}
+
+  footer{margin-top:54px;border-top:1px solid var(--line);padding-top:18px;font-size:11px;color:var(--ink-soft);line-height:1.9}
+  footer b{color:var(--ink)}
+  footer a{color:var(--rosa);text-decoration:none}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="logo-rosa.png" alt="Digi" class="logo" onerror="this.style.display='none';document.getElementById('logoFb').style.display='inline'">
+    <span class="logo-fallback" id="logoFb">digi</span>
+    <div class="divider"></div>
+    <div class="sofia-name">Sof<span class="dot">.</span>ia</div>
+    <a href="index.html" class="nav-back">← Revisão de artes</a>
+  </header>
+  <p class="sub">Oi! Me manda um <strong>PDF</strong> ou <strong>PPTX</strong> — eu leio página por página, encontro os erros e devolvo o arquivo com as correções marcadas, pronto para revisar.</p>
+
+  <span class="tipo-badge hidden" id="tipoBadge"></span>
+
+  <label class="drop" id="drop">
+    <span class="icon">+</span>
+    <strong>Solte o documento aqui</strong>
+    <small>ou clique para escolher · pdf, pptx</small>
+    <input type="file" id="file" accept=".pdf,.pptx,.ppt">
+  </label>
+
+  <div class="file-info" id="fileInfo">
+    <div class="file-icon" id="fileIconEl"></div>
+    <div>
+      <div class="file-name" id="fileName"></div>
+      <div class="file-meta" id="fileMeta"></div>
+    </div>
+  </div>
+
+  <div class="warn-limit" id="warnLimit"></div>
+
+  <div class="actions">
+    <button class="btn" id="run" disabled>Analisar com a Sof.ia</button>
+    <button class="btn ghost" id="resetBtn" style="display:none">Outro documento</button>
+  </div>
+
+  <div class="status" id="status">
+    <div class="txt" id="statusText">Preparando…</div>
+    <div class="bar-wrap"><div class="bar-fill" id="barFill"></div></div>
+  </div>
+
+  <div class="err-msg" id="errMsg"></div>
+
+  <div class="results" id="results">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="label">Resumo da revisão</span>
+        <span class="tag" id="tagTotal"></span>
+      </div>
+      <div class="stats" id="stats"></div>
+    </div>
+
+    <div class="panel" id="errorsPanel">
+      <div class="panel-head"><span class="label">Erros encontrados</span></div>
+      <div id="errorsList"></div>
+    </div>
+
+    <div class="panel">
+      <div class="download-area">
+        <div class="download-icon">⬇️</div>
+        <div class="download-desc" id="downloadDesc"></div>
+        <button class="btn green" id="downloadBtn">Baixar documento corrigido</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <b>Sof.ia</b> · Revisora de documentos by Digi · Powered by Gemini &amp; <a href="https://mozilla.github.io/pdf.js/">pdf.js</a> &amp; <a href="https://pdf-lib.js.org/">pdf-lib</a>
+  </footer>
+</div>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+/* ── CONFIG ──────────────────────────────────────────────────────────────── */
+const SUPABASE_URL      = 'https://gwzktdthxiyspipsegkp.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd3emt0ZHRoeGl5c3BpcHNlZ2twIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0MTA0MDYsImV4cCI6MjA5NTk4NjQwNn0.J6c1G62IKTX8zhcEbZ2WcxKDy-mJVSN4gl4XMFNx9pk';
+const MAX_PAGES = 15; // limite de páginas/slides por análise
+/* ─────────────────────────────────────────────────────────────────────────── */
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// pdf.js como global
+const pdfjsLib = window['pdfjs-dist/build/pdf'] || window.pdfjsLib;
+if (pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+const $ = id => document.getElementById(id);
+let currentFile = null, currentType = null, pageCount = 0;
+let downloadCallback = null;
+
+const escHtml = s => (s||'').replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function normStr(s){ return (s||'').normalize('NFC').trim().toLowerCase(); }
+
+/* ── UPLOAD ──────────────────────────────────────────────────────────────── */
+const drop = $('drop'), fileInput = $('file');
+['dragenter','dragover'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add('over')}));
+['dragleave','drop'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.remove('over')}));
+drop.addEventListener('drop', ev=>{ const f=ev.dataTransfer.files[0]; if(f) tryLoadFile(f); });
+fileInput.addEventListener('change', ev=>{ if(ev.target.files[0]) tryLoadFile(ev.target.files[0]); });
+
+async function tryLoadFile(f) {
+  const name = f.name.toLowerCase();
+  if (name.endsWith('.pdf')) {
+    currentType = 'pdf';
+  } else if (name.endsWith('.pptx') || name.endsWith('.ppt')) {
+    currentType = 'pptx';
+  } else {
+    showErr('Formato não suportado. Use PDF ou PPTX.'); return;
+  }
+
+  currentFile = f;
+  $('errMsg').classList.remove('show');
+  $('results').classList.remove('show');
+  $('warnLimit').classList.remove('show');
+
+  // Badge de tipo
+  const badge = $('tipoBadge');
+  badge.className = `tipo-badge ${currentType}`;
+  badge.textContent = currentType === 'pdf' ? '📄 PDF' : '📊 PPTX';
+
+  // Contar páginas/slides
+  let count = '?';
+  try {
+    if (currentType === 'pdf') {
+      const ab = await f.arrayBuffer();
+      const doc = await pdfjsLib.getDocument({data: ab}).promise;
+      pageCount = doc.numPages;
+      count = `${pageCount} página${pageCount !== 1 ? 's' : ''}`;
+    } else {
+      const zip = await JSZip.loadAsync(f);
+      const slides = Object.keys(zip.files).filter(k => /^ppt\/slides\/slide\d+\.xml$/.test(k));
+      pageCount = slides.length;
+      count = `${pageCount} slide${pageCount !== 1 ? 's' : ''}`;
+    }
+  } catch {}
+
+  // Aviso de limite
+  if (pageCount > MAX_PAGES) {
+    $('warnLimit').textContent = `⚠ Este documento tem ${pageCount} ${currentType==='pdf'?'páginas':'slides'}. A análise será feita nas primeiras ${MAX_PAGES}.`;
+    $('warnLimit').classList.add('show');
+  }
+
+  // Info do arquivo
+  const iconEl = $('fileIconEl');
+  iconEl.className = `file-icon ${currentType}`;
+  iconEl.textContent = currentType === 'pdf' ? '📄' : '📊';
+  $('fileName').textContent = f.name;
+  $('fileMeta').textContent = count + ' · ' + (f.size/1024/1024).toFixed(1) + ' MB';
+  $('fileInfo').classList.add('show');
+
+  $('run').disabled = false;
+  $('resetBtn').style.display = 'inline-block';
+}
+
+$('resetBtn').addEventListener('click', () => {
+  currentFile = null; fileInput.value = '';
+  $('fileInfo').classList.remove('show');
+  $('tipoBadge').className = 'tipo-badge hidden';
+  $('results').classList.remove('show');
+  $('warnLimit').classList.remove('show');
+  $('run').disabled = true; $('resetBtn').style.display = 'none';
+  window.scrollTo({top:0, behavior:'smooth'});
+});
+
+/* ── STATUS ──────────────────────────────────────────────────────────────── */
+function setStatus(txt, pct) {
+  $('status').classList.add('show');
+  $('statusText').textContent = txt;
+  $('barFill').style.width = (pct||0) + '%';
+}
+function showErr(msg) {
+  $('status').classList.remove('show');
+  $('errMsg').textContent = '⚠ ' + msg;
+  $('errMsg').classList.add('show');
+}
+
+/* ── ANÁLISE ─────────────────────────────────────────────────────────────── */
+$('run').addEventListener('click', analyze);
+
+async function analyze() {
+  if (!currentFile) return;
+  $('run').disabled = true;
+  $('results').classList.remove('show');
+  $('errMsg').classList.remove('show');
+
+  try {
+    if (currentType === 'pdf') await analyzePDF();
+    else await analyzePPTX();
+  } catch(e) {
+    showErr(e.message || 'Erro inesperado.');
+  } finally {
+    $('run').disabled = false;
+  }
+}
+
+/* ── PDF ─────────────────────────────────────────────────────────────────── */
+async function analyzePDF() {
+  const ab = await currentFile.arrayBuffer();
+  const pdfDoc = await pdfjsLib.getDocument({data: ab.slice(0)}).promise;
+  const total = Math.min(pdfDoc.numPages, MAX_PAGES);
+  const allErrors = []; // {page, errado, correto, motivo, box_2d}
+
+  for (let i = 1; i <= total; i++) {
+    setStatus(`Analisando página ${i} de ${total}…`, Math.round((i-1)/total*80));
+
+    const page = await pdfDoc.getPage(i);
+    const vp = page.getViewport({scale: 1.8});
+    const canvas = document.createElement('canvas');
+    canvas.width = vp.width; canvas.height = vp.height;
+    await page.render({canvasContext: canvas.getContext('2d'), viewport: vp}).promise;
+
+    const blob = await canvasToJpeg(canvas, 0.82);
+    const b64 = await blobToB64(blob);
+
+    const { data, error } = await supabase.functions.invoke('quick-api', {
+      body: { image: b64, mime: 'image/jpeg' }
+    });
+    if (error) throw new Error('Erro na página ' + i + ': ' + (error.message||''));
+    if (data?.error) throw new Error(data.error);
+
+    const erros = (data?.erros||[]).filter(e => normStr(e.errado) !== normStr(e.correto));
+    erros.forEach(e => allErrors.push({...e, page: i}));
+
+    if (i < total) await delay(400); // evita rate limit
+  }
+
+  setStatus('Gerando PDF com erros destacados…', 85);
+  const annotatedBytes = await annotatePDF(ab, allErrors);
+
+  setStatus('Pronto!', 100);
+  setTimeout(() => $('status').classList.remove('show'), 600);
+
+  // Download callback
+  const fname = currentFile.name.replace(/\.pdf$/i, '_revisado.pdf');
+  downloadCallback = () => {
+    const blob = new Blob([annotatedBytes], {type:'application/pdf'});
+    dlBlob(blob, fname);
+  };
+
+  renderResults('pdf', total, allErrors, fname);
+}
+
+async function annotatePDF(originalAB, errors) {
+  const { PDFDocument, StandardFonts, rgb, degrees } = PDFLib;
+  const pdfDoc = await PDFDocument.load(originalAB);
+  const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const pages = pdfDoc.getPages();
+  const rosaFill = rgb(0.92, 0.01, 0.34);
+  const rosaLight = rgb(1, 0.82, 0.89);
+
+  let globalIdx = 1;
+  errors.forEach(e => {
+    if (!e.box_2d || e.box_2d.length !== 4) { globalIdx++; return; }
+    const pg = pages[e.page - 1]; if (!pg) { globalIdx++; return; }
+    const { width: pw, height: ph } = pg.getSize();
+    const [y0, x0, y1, x1] = e.box_2d;
+
+    const rx = (x0/1000) * pw;
+    const ry = ph - (y1/1000) * ph;  // PDF Y de baixo para cima
+    const rw = ((x1-x0)/1000) * pw;
+    const rh = ((y1-y0)/1000) * ph;
+
+    // highlight rosa
+    pg.drawRectangle({x:rx, y:ry, width:rw, height:rh,
+      color: rosaLight, opacity: 0.45,
+      borderColor: rosaFill, borderWidth: 1});
+
+    // bolinha numerada
+    const bx = Math.max(rx - 4, 0);
+    const by = ry + rh;
+    pg.drawCircle({x: bx + 6, y: by + 6, size: 7, color: rosaFill});
+    pg.drawText(String(globalIdx), {x: bx + (globalIdx < 10 ? 3 : 1), y: by + 3,
+      size: 8, font, color: rgb(1,1,1)});
+
+    globalIdx++;
+  });
+
+  return await pdfDoc.save();
+}
+
+/* ── PPTX ────────────────────────────────────────────────────────────────── */
+async function analyzePPTX() {
+  const zip = await JSZip.loadAsync(currentFile);
+  const slideFiles = Object.keys(zip.files)
+    .filter(k => /^ppt\/slides\/slide\d+\.xml$/.test(k))
+    .sort((a,b) => {
+      const na = parseInt(a.match(/\d+/)[0]);
+      const nb = parseInt(b.match(/\d+/)[0]);
+      return na - nb;
+    });
+
+  const total = Math.min(slideFiles.length, MAX_PAGES);
+  const slideResults = []; // {num, texto, texto_corrigido, erros}
+
+  for (let i = 0; i < total; i++) {
+    setStatus(`Analisando slide ${i+1} de ${total}…`, Math.round(i/total*80));
+
+    const xml = await zip.files[slideFiles[i]].async('text');
+    const texto = extractSlideText(xml);
+    if (!texto.trim()) { slideResults.push({num:i+1, texto:'', texto_corrigido:'', erros:[]}); continue; }
+
+    const { data, error } = await supabase.functions.invoke('quick-api', {
+      body: { modo:'texto', texto, contexto: `Slide ${i+1} de apresentação PPTX` }
+    });
+    if (error) throw new Error('Erro no slide ' + (i+1) + ': ' + (error.message||''));
+    if (data?.error) throw new Error(data.error);
+
+    const erros = (data?.erros||[]).filter(e => normStr(e.errado) !== normStr(e.correto));
+    slideResults.push({num:i+1, texto, texto_corrigido: data?.texto_corrigido||texto, erros});
+
+    if (i < total-1) await delay(300);
+  }
+
+  setStatus('Gerando documento com correções…', 90);
+  const docBlob = gerarDocCorrecoes(currentFile.name, slideResults);
+
+  setStatus('Pronto!', 100);
+  setTimeout(() => $('status').classList.remove('show'), 600);
+
+  const allErrors = slideResults.flatMap(s => s.erros.map(e => ({...e, page:s.num, slide:true})));
+  const fname = currentFile.name.replace(/\.pptx?$/i, '_revisado.doc');
+  downloadCallback = () => dlBlob(docBlob, fname);
+
+  renderResults('pptx', total, allErrors, fname);
+}
+
+function extractSlideText(xmlStr) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xmlStr, 'text/xml');
+  const all = Array.from(doc.querySelectorAll('*'));
+  const paragraphs = all.filter(el => el.localName === 'p');
+  return paragraphs.map(p => {
+    const runs = Array.from(p.querySelectorAll('*')).filter(el => el.localName === 't');
+    return runs.map(t => t.textContent).join('');
+  }).filter(l => l.trim()).join('\n');
+}
+
+function gerarDocCorrecoes(filename, slides) {
+  const totalErros = slides.reduce((n, s) => n + s.erros.length, 0);
+  const now = new Date().toLocaleDateString('pt-BR');
+
+  let body = `<h1>Revisão: ${escHtml(filename)}</h1>
+<p style="color:#6a6c6e;font-size:14px">Gerado pela Sof.ia em ${now} · ${totalErros} erro${totalErros!==1?'s':''} encontrado${totalErros!==1?'s':''}</p>
+<hr style="border:none;border-top:3px solid #EA0356;margin:18px 0">`;
+
+  slides.forEach(s => {
+    const nErros = s.erros.length;
+    body += `<h2 style="margin-top:24px;color:#222323">Slide ${s.num}</h2>`;
+    if (!s.texto.trim()) { body += `<p style="color:#aaa;font-size:13px">(slide sem texto)</p>`; return; }
+
+    if (nErros === 0) {
+      body += `<p style="color:#1f8a5b;font-size:13px">✓ Nenhum erro encontrado</p>`;
+      body += `<p style="font-size:14px;color:#444">${escHtml(s.texto)}</p>`;
+    } else {
+      // Aplica marcações no texto
+      let textoMarcado = escHtml(s.texto_corrigido || s.texto);
+      s.erros.forEach(e => {
+        const from = escHtml(e.errado);
+        const to = escHtml(e.correto);
+        // tenta marcar a correção no texto corrigido
+        textoMarcado = textoMarcado.replace(to,
+          `<span style="background:#e6f4ec;color:#1f8a5b;font-weight:600">${to}</span>`);
+      });
+      body += `<div style="background:#f7f7f8;border-left:3px solid #EA0356;padding:12px 16px;border-radius:4px;font-size:14px;line-height:1.7">${textoMarcado}</div>`;
+
+      body += `<table style="width:100%;border-collapse:collapse;margin-top:12px;font-size:13px">
+<tr style="background:#fdeef3"><th style="padding:6px 10px;text-align:left;border:1px solid #DBDCDD">#</th>
+<th style="padding:6px 10px;text-align:left;border:1px solid #DBDCDD">Errado</th>
+<th style="padding:6px 10px;text-align:left;border:1px solid #DBDCDD">Correto</th>
+<th style="padding:6px 10px;text-align:left;border:1px solid #DBDCDD">Motivo</th></tr>`;
+      s.erros.forEach((e, idx) => {
+        body += `<tr><td style="padding:6px 10px;border:1px solid #DBDCDD">${idx+1}</td>
+<td style="padding:6px 10px;border:1px solid #DBDCDD;color:#EA0356;text-decoration:line-through">${escHtml(e.errado)}</td>
+<td style="padding:6px 10px;border:1px solid #DBDCDD;color:#1f8a5b;font-weight:600">${escHtml(e.correto)}</td>
+<td style="padding:6px 10px;border:1px solid #DBDCDD;color:#6a6c6e">${escHtml(e.motivo||'')}</td></tr>`;
+      });
+      body += `</table>`;
+    }
+  });
+
+  const html = `<html xmlns:o='urn:schemas-microsoft-com:office:office'
+xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head><meta charset='utf-8'>
+<style>body{font-family:Arial,sans-serif;padding:40px;max-width:900px}
+h1{color:#EA0356}h2{color:#222323;border-bottom:1px solid #DBDCDD;padding-bottom:6px}
+del{color:#EA0356}ins{color:#1f8a5b;text-decoration:none}</style>
+</head><body>${body}</body></html>`;
+
+  return new Blob([html], {type:'application/msword;charset=utf-8'});
+}
+
+/* ── RENDER RESULTS ──────────────────────────────────────────────────────── */
+function renderResults(tipo, totalPages, allErrors, fname) {
+  const n = allErrors.length;
+  const unit = tipo === 'pdf' ? 'página' : 'slide';
+
+  // stats
+  $('tagTotal').textContent = n === 0 ? 'sem erros' : `${n} erro${n!==1?'s':''}`;
+  $('tagTotal').className = n === 0 ? 'tag zero' : 'tag';
+  $('stats').innerHTML = `
+    <div class="stat ${n===0?'ok':''}"><div class="n">${n}</div><div class="l">erros encontrados</div></div>
+    <div class="stat"><div class="n" style="color:var(--ink)">${totalPages}</div><div class="l">${unit}${totalPages!==1?'s':''} analisada${totalPages!==1?'s':''}</div></div>`;
+
+  // lista de erros por página/slide
+  const list = $('errorsList');
+  list.innerHTML = '';
+  if (n === 0) {
+    $('errorsPanel').style.display = 'none';
+  } else {
+    $('errorsPanel').style.display = 'block';
+    const grouped = {};
+    allErrors.forEach(e => {
+      const k = e.page || 1;
+      if (!grouped[k]) grouped[k] = [];
+      grouped[k].push(e);
+    });
+    Object.entries(grouped).sort((a,b)=>+a[0]-+b[0]).forEach(([pg, erros]) => {
+      const g = document.createElement('div');
+      g.className = 'page-group';
+      g.innerHTML = `<div class="page-label">${unit.charAt(0).toUpperCase()+unit.slice(1)} ${pg}</div>
+<ul class="errlist">${erros.map((e,i)=>`<li>
+  <span class="idx">${i+1}</span>
+  <div><div class="swap"><span class="from">${escHtml(e.errado)}</span>
+  <span class="arrow">→</span><span class="to">${escHtml(e.correto)}</span></div>
+  <span class="why">${escHtml(e.motivo||'')}</span></div></li>`).join('')}
+</ul>`;
+      list.appendChild(g);
+    });
+  }
+
+  // download
+  const isDoc = tipo === 'pptx';
+  $('downloadDesc').textContent = isDoc
+    ? 'Documento Word (.doc) com todas as correções marcadas por slide.'
+    : 'PDF com os erros destacados em rosa e numerados para fácil localização.';
+
+  $('downloadBtn').onclick = downloadCallback;
+
+  $('results').classList.add('show');
+  $('results').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+/* ── UTILS ───────────────────────────────────────────────────────────────── */
+function canvasToJpeg(canvas, quality) {
+  return new Promise(res => canvas.toBlob(res, 'image/jpeg', quality));
+}
+function blobToB64(blob) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = rej;
+    r.readAsDataURL(blob);
+  });
+}
+function dlBlob(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+</script>
+</body>
+</html>
