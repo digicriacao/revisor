@@ -47,10 +47,10 @@
   .sofia-mascot{display:none}
   .sofia-line{display:none}
   @media(min-width:960px){
-    .intro-section{min-height:430px}
+    .intro-section{min-height:460px;overflow:visible}
     .sofia-mascot{
       display:block;position:absolute;
-      right:-10px;bottom:3px;top:auto;
+      right:-10px;top:-18px;bottom:auto;
       width:340px;height:auto;
       z-index:3;
       pointer-events:none;user-select:none;
@@ -252,13 +252,14 @@
 
     <div class="warn-limit" id="warnLimit"></div>
 
-    <div class="actions">
-      <button class="btn" id="run" disabled>Analisar com a Sof.ia</button>
-      <button class="btn ghost" id="resetBtn" style="display:none">Enviar outro arquivo</button>
-    </div>
-
     <div class="sofia-line"></div>
   </div><!-- /intro-section -->
+
+  <!-- botão abaixo do traço rosa -->
+  <div class="actions" style="margin-top:22px">
+    <button class="btn" id="run" disabled>Analisar com a Sof.ia</button>
+    <button class="btn ghost" id="resetBtn" style="display:none">Enviar outro arquivo</button>
+  </div>
 
   <div class="err-msg" id="errMsg"></div>
 
@@ -768,12 +769,24 @@ async function analyzePPTX() {
     const texto = extractSlideText(xml);
     if (!texto.trim()){ slideResults.push({num:i+1,texto:'',texto_corrigido:'',erros:[]}); continue; }
     const {data,error} = await invokeWithRetry({modo:'texto',texto,contexto:`Slide ${i+1} de apresentação PPTX`});
-    if (error||data?.error){ slideResults.push({num:i+1,texto,texto_corrigido:texto,erros:[],falhou:true}); continue; }
+    if (error||data?.error){
+      const motivo = data?.error || error?.message || 'Erro desconhecido';
+      console.warn(`Slide ${i+1} falhou:`, motivo);
+      slideResults.push({num:i+1,texto,texto_corrigido:texto,erros:[],falhou:true,falhoMotivo:motivo});
+      continue;
+    }
     const erros=(data?.erros||[]).filter(e=>normDocStr(e.errado)!==normDocStr(e.correto));
     slideResults.push({num:i+1,texto,texto_corrigido:data?.texto_corrigido||texto,erros});
     if (i<total-1) await delay(300);
   }
   setStatus('Gerando documento com correções…');
+  // Se todos os slides com texto falharam, provavelmente a Edge Function não foi atualizada
+  const slidesComTexto = slideResults.filter(s => s.texto.trim());
+  const todosFalharam = slidesComTexto.length > 0 && slidesComTexto.every(s => s.falhou);
+  if (todosFalharam) {
+    const primeiroErro = slidesComTexto[0]?.falhoMotivo || 'Imagem não recebida';
+    throw new Error(`A revisão de PPTX falhou em todos os slides. Causa provável: a Edge Function "quick-api" no Supabase não foi atualizada com suporte a PPTX. Faça o deploy do revisar.ts mais recente. Detalhe: ${primeiroErro}`);
+  }
   const docBlob = gerarDocCorrecoes(currentFile.name, slideResults);
   hideStatus();
   const allErrors = slideResults.flatMap(s=>s.erros.map(e=>({...e,page:s.num,slide:true})));
@@ -799,7 +812,7 @@ function gerarDocCorrecoes(filename, slides) {
   slides.forEach(s=>{
     body+=`<h2 style="margin-top:24px;color:#222323">Slide ${s.num}</h2>`;
     if (!s.texto.trim()){ body+=`<p style="color:#aaa;font-size:13px">(slide sem texto)</p>`; return; }
-    if (s.falhou){ body+=`<p style="color:#e67e22;font-size:13px">⚠ Não foi possível analisar este slide.</p>`; return; }
+    if (s.falhou){ body+=`<p style="color:#e67e22;font-size:13px">⚠ Não foi possível analisar este slide${s.falhoMotivo ? ` — ${escapeHtml(s.falhoMotivo)}` : ''}.</p>`; return; }
     if (s.erros.length===0){ body+=`<p style="color:#1f8a5b;font-size:13px">✓ Sem erros</p><p style="font-size:14px;color:#444">${escapeHtml(s.texto)}</p>`; return; }
     let txt=escapeHtml(s.texto_corrigido||s.texto);
     s.erros.forEach(e=>{ txt=txt.replace(escapeHtml(e.correto),`<span style="background:#e6f4ec;color:#1f8a5b;font-weight:600">${escapeHtml(e.correto)}</span>`); });
