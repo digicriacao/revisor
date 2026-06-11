@@ -47,7 +47,7 @@
   .sofia-mascot{display:none}
   .sofia-line{display:none}
   @media(min-width:960px){
-    .intro-section{min-height:460px;overflow:visible}
+    .intro-section{min-height:460px;overflow:visible;padding-bottom:18px}
     .sofia-mascot{
       display:block;position:absolute;
       right:-10px;bottom:3px;top:auto;
@@ -56,7 +56,11 @@
       pointer-events:none;user-select:none;
       filter:drop-shadow(0 6px 20px rgba(234,3,86,.08));
     }
-    .sofia-line{display:block;height:3px;background:var(--rosa);border-radius:2px;margin-top:26px}
+    .sofia-line{
+      display:block;position:absolute;
+      bottom:0;left:0;right:0;
+      height:3px;background:var(--rosa);border-radius:2px;
+    }
   }
   .sub{color:var(--ink-soft);font-size:15px;margin:14px 0 28px;max-width:56ch}
 
@@ -777,7 +781,7 @@ async function analyzePPTX() {
     }
     const erros=(data?.erros||[]).filter(e=>normDocStr(e.errado)!==normDocStr(e.correto));
     slideResults.push({num:i+1,texto,texto_corrigido:data?.texto_corrigido||texto,erros});
-    if (i<total-1) await delay(300);
+    if (i<total-1) await delay(800);
   }
   setStatus('Gerando documento com correções…');
   // Se todos os slides com texto falharam, provavelmente a Edge Function não foi atualizada
