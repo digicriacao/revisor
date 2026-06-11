@@ -176,10 +176,45 @@
   .btn.green{background:var(--green)}
   .btn.green:hover{background:#17704a}
   .download-area{text-align:center;padding:18px 0 4px}
+
+  /* ---- modal de carregamento ---- */
+  .modal-loading{display:none;position:fixed;inset:0;background:rgba(22,22,24,.55);
+    z-index:999;align-items:center;justify-content:center;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+  .modal-loading.show{display:flex;animation:fadeIn .22s ease}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  .modal-card{background:var(--surface);border-radius:22px;padding:44px 52px;text-align:center;
+    box-shadow:0 28px 70px -12px rgba(22,22,24,.38);min-width:300px;max-width:440px;width:90%}
+  .modal-spinner{width:60px;height:60px;border-radius:50%;
+    border:5px solid var(--rosa-fundo);border-top-color:var(--rosa);
+    animation:spin .8s linear infinite;margin:0 auto 22px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .modal-title{font-weight:800;font-size:26px;letter-spacing:-.02em;margin-bottom:4px}
+  .modal-title .dot{color:var(--rosa)}
+  .modal-label{font-size:13px;color:var(--ink-soft);margin-bottom:20px}
+  .modal-status{font-size:15px;font-weight:600;color:var(--ink);min-height:22px;margin-bottom:16px;line-height:1.4}
+  .modal-bar-wrap{height:7px;background:#ececed;border-radius:6px;overflow:hidden;margin-bottom:14px}
+  .modal-bar-fill{height:100%;width:0;background:var(--rosa);border-radius:6px;transition:width .35s ease}
+  .modal-bar-fill.indeterminate{width:35%;animation:indeterminate 1.2s ease-in-out infinite}
+  @keyframes indeterminate{0%{margin-left:-35%}100%{margin-left:100%}}
+  .modal-hint{font-size:12px;color:var(--ink-soft)}
+
   @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 </style>
 </head>
 <body>
+
+<!-- MODAL DE CARREGAMENTO -->
+<div class="modal-loading" id="modalLoading">
+  <div class="modal-card">
+    <div class="modal-spinner"></div>
+    <div class="modal-title">Sof<span class="dot">.</span>ia</div>
+    <div class="modal-label">está revisando o arquivo…</div>
+    <div class="modal-status" id="modalStatus">Preparando…</div>
+    <div class="modal-bar-wrap"><div class="modal-bar-fill indeterminate" id="modalBarFill"></div></div>
+    <div class="modal-hint">Isso pode levar alguns segundos</div>
+  </div>
+</div>
+
 <div class="wrap">
   <div class="intro-section">
     <img class="sofia-mascot" src="SOFIA.png" alt="Sof.ia">
@@ -194,38 +229,37 @@
 
     <div class="warn" id="cfgWarn">⚠ Configure suas chaves do Supabase no início do bloco de script (<code>SUPABASE_URL</code> e <code>SUPABASE_ANON_KEY</code>) para a ferramenta funcionar.</div>
 
+    <!-- DROP UNIFICADO — dentro da intro-section para Sofia sobrepor -->
+    <label class="drop" id="drop">
+      <span class="icon">+</span>
+      <strong>Me manda a arte ou documento aqui</strong>
+      <small>png, jpg, webp · pdf · pptx</small>
+      <input type="file" id="file" accept="image/*,.pdf,.pptx,.ppt">
+    </label>
+
+    <div class="uploaded" id="uploaded" style="display:none">
+      <img id="previewImg" alt="prévia da arte">
+      <span id="fileName"></span>
+    </div>
+
+    <div class="file-info-doc" id="fileInfoDoc">
+      <div class="file-icon" id="fileIconEl"></div>
+      <div>
+        <div style="font-weight:600;font-size:15px;word-break:break-all" id="fileNameDoc"></div>
+        <div style="font-size:13px;color:var(--ink-soft);margin-top:2px" id="fileMetaDoc"></div>
+      </div>
+    </div>
+
+    <div class="warn-limit" id="warnLimit"></div>
+
+    <div class="actions">
+      <button class="btn" id="run" disabled>Analisar com a Sof.ia</button>
+      <button class="btn ghost" id="resetBtn" style="display:none">Enviar outro arquivo</button>
+    </div>
+
     <div class="sofia-line"></div>
   </div><!-- /intro-section -->
 
-  <!-- DROP UNIFICADO -->
-  <label class="drop" id="drop">
-    <span class="icon">+</span>
-    <strong>Me manda a arte ou documento aqui</strong>
-    <small>png, jpg, webp · pdf · pptx</small>
-    <input type="file" id="file" accept="image/*,.pdf,.pptx,.ppt">
-  </label>
-
-  <div class="uploaded" id="uploaded" style="display:none">
-    <img id="previewImg" alt="prévia da arte">
-    <span id="fileName"></span>
-  </div>
-
-  <div class="file-info-doc" id="fileInfoDoc">
-    <div class="file-icon" id="fileIconEl"></div>
-    <div>
-      <div style="font-weight:600;font-size:15px;word-break:break-all" id="fileNameDoc"></div>
-      <div style="font-size:13px;color:var(--ink-soft);margin-top:2px" id="fileMetaDoc"></div>
-    </div>
-  </div>
-
-  <div class="warn-limit" id="warnLimit"></div>
-
-  <div class="actions">
-    <button class="btn" id="run" disabled>Analisar com a Sof.ia</button>
-    <button class="btn ghost" id="resetBtn" style="display:none">Enviar outro arquivo</button>
-  </div>
-
-  <div class="status" id="status"><div class="txt" id="statusText">Analisando…</div><div class="bar"><i id="barFill" style="width:30%"></i></div></div>
   <div class="err-msg" id="errMsg"></div>
 
   <div class="results" id="results">
@@ -298,6 +332,25 @@ else document.getElementById('cfgWarn').classList.add('show');
 const $ = id => document.getElementById(id);
 let currentFile = null, currentType = null; // 'arte' | 'pdf' | 'pptx'
 let currentTexto = '';
+
+/* ---- modal de carregamento ---- */
+function setStatus(txt, pct) {
+  $('modalStatus').textContent = txt || '';
+  const bar = $('modalBarFill');
+  if (pct !== undefined) {
+    bar.classList.remove('indeterminate');
+    bar.style.width = pct + '%';
+  } else {
+    bar.classList.add('indeterminate');
+    bar.style.width = '35%';
+  }
+  $('modalLoading').classList.add('show');
+}
+function hideStatus() {
+  $('modalLoading').classList.remove('show');
+  $('modalBarFill').style.width = '0';
+  $('modalBarFill').classList.add('indeterminate');
+}
 
 /* ---------- renderização do texto corrigido em blocos ---------- */
 function guessType(t){
@@ -444,7 +497,7 @@ function locateError(e, words, dims){
 }
 async function posicionarErros(file, erros){
   try{
-    $('statusText').textContent='Identificando onde estão os erros…';
+    setStatus('Identificando onde estão os erros…');
     const dims = await imageDims(file);
     const { data:od } = await Tesseract.recognize(file, 'por');
     const words = flattenWords(od);
@@ -482,13 +535,13 @@ function compressImage(file, maxDim=1800, quality=0.85){
 async function analyze(){
   if(!currentFile || !supabase) return;
   $('run').disabled=true; $('results').classList.remove('show'); $('errMsg').classList.remove('show');
-  $('status').classList.add('show'); $('statusText').textContent='Preparando a imagem…';
+  setStatus('Preparando a imagem…');
   try{
     // comprime para o Gemini; Tesseract e Storage usam o arquivo original
     const compressed = await compressImage(currentFile);
     const b64 = await fileToBase64(compressed);
 
-    $('statusText').textContent='Estou lendo a arte…';
+    setStatus('Estou lendo a arte…');
     const { data, error } = await supabase.functions.invoke('quick-api', {
       body:{ image:b64, mime:'image/jpeg' }
     });
@@ -510,7 +563,7 @@ async function analyze(){
     // localiza cada erro na arte (Tesseract só p/ posição) e guarda a caixa em %
     const errosFinal = await posicionarErros(currentFile, erros);
 
-    $('statusText').textContent='Salvando no histórico…';
+    setStatus('Salvando no histórico…');
     const path = `${Date.now()}-${currentFile.name.replace(/[^\w.\-]/g,'_')}`;
     const up = await supabase.storage.from('artes').upload(path, currentFile, { upsert:false });
     let imageUrl = null;
@@ -520,10 +573,10 @@ async function analyze(){
 
     const localUrl = URL.createObjectURL(currentFile);
     renderResults(localUrl, errosFinal, blocos, textoCorrigido);
-    $('status').classList.remove('show');
+    hideStatus();
     loadHistory();
   }catch(err){
-    $('status').classList.remove('show');
+    hideStatus();
     $('errMsg').textContent='⚠ '+err.message; $('errMsg').classList.add('show');
   }finally{ $('run').disabled=false; }
 }
@@ -627,7 +680,7 @@ let docPageCount = 0, docDownloadCb = null;
 async function analyzeDoc() {
   if (!currentFile||!supabase) return;
   $('run').disabled=true; $('resultsDoc').classList.remove('show'); $('errMsg').classList.remove('show');
-  $('status').classList.add('show');
+  // status via modal
   try {
     if (currentType==='pdf') await analyzePDF();
     else await analyzePPTX();
@@ -647,7 +700,7 @@ async function invokeWithRetry(body, maxRetries=2) {
   }
   return {data:null, error:new Error('Tentativas esgotadas')};
 }
-function showDocErr(msg){ $('status').classList.remove('show'); $('errMsg').textContent='⚠ '+msg; $('errMsg').classList.add('show'); }
+function showDocErr(msg){ hideStatus(); $('errMsg').textContent='⚠ '+msg; $('errMsg').classList.add('show'); }
 function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
 function blobToB64(blob){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(blob); }); }
 function dlBlob(blob,name){ const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1000); }
@@ -660,7 +713,7 @@ async function analyzePDF() {
   const total = Math.min(pdfDoc.numPages, MAX_PAGES);
   const allErrors=[];
   for (let i=1; i<=total; i++) {
-    $('statusText').textContent = `Analisando página ${i} de ${total}…`;
+    setStatus(`Analisando página ${i} de ${total}…`, Math.round((i-1)/total*80));
     const page = await pdfDoc.getPage(i);
     const vp = page.getViewport({scale:1.8});
     const canvas = document.createElement('canvas');
@@ -673,9 +726,9 @@ async function analyzePDF() {
     (data?.erros||[]).filter(e=>normDocStr(e.errado)!==normDocStr(e.correto)).forEach(e=>allErrors.push({...e,page:i}));
     if (i<total) await delay(400);
   }
-  $('statusText').textContent='Gerando PDF com erros destacados…';
+  setStatus('Gerando PDF com erros destacados…');
   const annotated = await annotatePDF(ab, allErrors);
-  $('status').classList.remove('show');
+  hideStatus();
   const fname = currentFile.name.replace(/\.pdf$/i,'_revisado.pdf');
   docDownloadCb = ()=>dlBlob(new Blob([annotated],{type:'application/pdf'}), fname);
   renderDocResults('pdf', total, allErrors, fname);
@@ -710,7 +763,7 @@ async function analyzePPTX() {
   const total = Math.min(slideFiles.length, MAX_PAGES);
   const slideResults=[];
   for (let i=0; i<total; i++) {
-    $('statusText').textContent=`Analisando slide ${i+1} de ${total}…`;
+    setStatus(`Analisando slide ${i+1} de ${total}…`, Math.round(i/total*80));
     const xml = await zip.files[slideFiles[i]].async('text');
     const texto = extractSlideText(xml);
     if (!texto.trim()){ slideResults.push({num:i+1,texto:'',texto_corrigido:'',erros:[]}); continue; }
@@ -720,9 +773,9 @@ async function analyzePPTX() {
     slideResults.push({num:i+1,texto,texto_corrigido:data?.texto_corrigido||texto,erros});
     if (i<total-1) await delay(300);
   }
-  $('statusText').textContent='Gerando documento com correções…';
+  setStatus('Gerando documento com correções…');
   const docBlob = gerarDocCorrecoes(currentFile.name, slideResults);
-  $('status').classList.remove('show');
+  hideStatus();
   const allErrors = slideResults.flatMap(s=>s.erros.map(e=>({...e,page:s.num,slide:true})));
   const fname = currentFile.name.replace(/\.pptx?$/i,'_revisado.doc');
   docDownloadCb = ()=>dlBlob(docBlob, fname);
