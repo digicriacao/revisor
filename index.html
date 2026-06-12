@@ -131,7 +131,7 @@
   .bloco-cta{font-size:15px;font-weight:700;background:var(--rosa-fundo);color:var(--rosa);padding:10px 14px;border-radius:8px;display:inline-block;letter-spacing:.01em}
   .bloco-nota{font-size:12px;color:var(--ink-soft);border-top:1px solid var(--line);padding-top:10px;margin-top:6px;line-height:1.55}
   .errlist{list-style:none}
-  .errlist li{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
+  .errlist li{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);align-items:flex-start}
   .errlist li:last-child{border:none}
   .errlist .idx{width:22px;height:22px;flex-shrink:0;background:var(--rosa);color:#fff;border-radius:50%;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:'Poppins',sans-serif}
   .errlist .swap{font-family:'Poppins',sans-serif;font-size:13px}
@@ -160,6 +160,10 @@
   footer{margin-top:54px;border-top:1px solid var(--line);padding-top:18px;font-family:'Poppins',sans-serif;font-size:11px;color:var(--ink-soft);line-height:1.9}
   footer b{color:var(--ink)}
   .hist-toggle{display:block;margin:14px auto 0;font-size:13px;padding:9px 20px}
+  .fb-actions{display:flex;gap:4px;align-items:flex-start;flex-shrink:0}
+  .fb-btn{background:transparent;border:1px solid var(--line);border-radius:7px;width:30px;height:30px;cursor:pointer;font-size:14px;line-height:1;padding:0;transition:.15s;opacity:.55}
+  .fb-btn:hover{opacity:1;border-color:var(--rosa);background:var(--rosa-fundo)}
+  .fb-btn.fb-done{opacity:1;border-color:var(--green);color:var(--green);background:var(--green-soft);cursor:default}
   footer a{color:var(--rosa);text-decoration:none;font-weight:600}
 
   /* ---- upload de doc ---- */
@@ -628,7 +632,17 @@ function renderResults(imgUrl, erros, blocos, textoPlano){
     $('errPanel').style.display='block';
     erros.forEach((e,i)=>{
       const li=document.createElement('li');
-      li.innerHTML=`<span class="idx">${i+1}</span><div><div class="swap"><span class="from">${escapeHtml(e.errado)}</span><span class="arrow">→</span><span class="to">${escapeHtml(e.correto)}</span></div><span class="why">${escapeHtml(e.motivo||'')}</span></div>`;
+      li.innerHTML=`<span class="idx">${i+1}</span><div style="flex:1"><div class="swap"><span class="from">${escapeHtml(e.errado)}</span><span class="arrow">→</span><span class="to">${escapeHtml(e.correto)}</span></div><span class="why">${escapeHtml(e.motivo||'')}</span></div>`+
+        `<div class="fb-actions">`+
+        `<button class="fb-btn" title="Este ajuste está incorreto" data-fb="errado">👎</button>`+
+        `<button class="fb-btn" title="Adicionar ao vocabulário (não é erro)" data-fb="vocab">📖</button>`+
+        `</div>`;
+      li.querySelector('[data-fb="errado"]').addEventListener('click',ev=>{
+        ev.stopPropagation(); enviarFeedback('ajuste_incorreto', e, ev.currentTarget);
+      });
+      li.querySelector('[data-fb="vocab"]').addEventListener('click',ev=>{
+        ev.stopPropagation(); enviarFeedback('add_vocabulario', e, ev.currentTarget);
+      });
       list.appendChild(li);
     });
   }
@@ -694,6 +708,30 @@ async function removeHistory(id){
   if(!supabase) return;
   await supabase.from('revisoes').delete().eq('id',id);
   loadHistory();
+}
+
+/* ---- feedback do usuário (alimenta o aprendizado da Sof.ia) ---- */
+async function enviarFeedback(tipo, erro, btn){
+  if(!supabase){ return; }
+  const registro = {
+    tipo: tipo,
+    termo: tipo === 'add_vocabulario' ? (erro.errado || '') : (erro.correto || ''),
+    correto: erro.correto || '',
+    detalhe: 'errado: ' + (erro.errado||'') + ' | correto: ' + (erro.correto||'') + ' | motivo: ' + (erro.motivo||''),
+    status: 'pendente'
+  };
+  try{
+    const { error } = await supabase.from('feedbacks').insert(registro);
+    if(error) throw error;
+    // feedback visual: marca o botão como enviado
+    btn.textContent = '✓';
+    btn.disabled = true;
+    btn.classList.add('fb-done');
+    const irmao = btn.parentElement.querySelector('.fb-btn:not(.fb-done)');
+    if(irmao) irmao.style.opacity = '0.3';
+  }catch(e){
+    btn.title = 'Erro ao enviar. Tente de novo.';
+  }
 }
 
 if(configured) loadHistory();

@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sof.ia · Admin</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='11' fill='%23EA0356'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F7F7F8;--surface:#fff;--ink:#222323;--ink-soft:#6a6c6e;
+    --line:#DBDCDD;--rosa:#EA0356;--rosa-vivo:#FF0066;--rosa-fundo:#fdeef3;
+    --green:#1f8a5b;--green-soft:#e6f4ec;--amber:#e67e22;--amber-soft:#fff4e6;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.5;padding:32px 20px 80px}
+  .wrap{max-width:880px;margin:0 auto}
+  header{display:flex;align-items:center;gap:14px;margin-bottom:8px}
+  .sofia-name{font-weight:800;font-size:30px;letter-spacing:-.03em}
+  .sofia-name .dot{color:var(--rosa)}
+  .admin-tag{font-size:12px;font-weight:600;color:var(--rosa);background:var(--rosa-fundo);padding:4px 12px;border-radius:20px;text-transform:uppercase;letter-spacing:.05em}
+  .nav-back{font-size:13px;color:var(--ink-soft);text-decoration:none;margin-left:auto;font-weight:500;padding:6px 14px;border:1.5px solid var(--line);border-radius:8px}
+  .nav-back:hover{border-color:var(--rosa);color:var(--rosa)}
+  .sub{color:var(--ink-soft);font-size:14px;margin:6px 0 26px}
+
+  /* login */
+  .login{max-width:380px;margin:80px auto;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:36px;text-align:center}
+  .login h2{font-size:20px;margin-bottom:6px}
+  .login p{color:var(--ink-soft);font-size:14px;margin-bottom:22px}
+  .login input{width:100%;padding:13px 16px;border:1.5px solid var(--line);border-radius:10px;font-family:'Poppins',sans-serif;font-size:15px;margin-bottom:14px}
+  .login input:focus{outline:none;border-color:var(--rosa)}
+  .login .err{color:var(--rosa);font-size:13px;margin-bottom:12px;display:none}
+  .login .err.show{display:block}
+
+  .btn{font-family:'Poppins',sans-serif;font-weight:600;font-size:14px;background:var(--rosa);color:#fff;border:none;padding:12px 22px;border-radius:10px;cursor:pointer;transition:.15s}
+  .btn:hover{background:var(--rosa-vivo)}
+  .btn.sm{padding:7px 14px;font-size:13px}
+  .btn.green{background:var(--green)}
+  .btn.green:hover{background:#17704a}
+  .btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+  .btn.ghost:hover{border-color:var(--ink)}
+  .btn.danger{background:transparent;color:var(--rosa);border:1.5px solid var(--rosa)}
+  .btn.danger:hover{background:var(--rosa);color:#fff}
+
+  /* tabs */
+  .tabs{display:flex;gap:4px;margin:24px 0;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px}
+  .tab{flex:1;font-family:'Poppins',sans-serif;font-weight:600;font-size:14px;padding:11px;border:none;border-radius:9px;cursor:pointer;background:transparent;color:var(--ink-soft);transition:.15s;position:relative}
+  .tab.active{background:var(--rosa);color:#fff}
+  .tab .badge{display:inline-block;background:#fff;color:var(--rosa);border-radius:20px;font-size:11px;padding:1px 7px;margin-left:6px;font-weight:700}
+  .tab.active .badge{background:rgba(255,255,255,.25);color:#fff}
+
+  .panel-tab{display:none}
+  .panel-tab.active{display:block}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:12px}
+  .card-row{display:flex;justify-content:space-between;align-items:center;gap:14px}
+  .card .label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);margin-bottom:4px}
+  .swap-from{color:var(--rosa);text-decoration:line-through}
+  .swap-to{color:var(--green);font-weight:600}
+  .arrow{color:var(--ink-soft);margin:0 6px}
+  .card .detalhe{font-size:13px;color:var(--ink-soft);margin-top:4px}
+  .card .data{font-size:12px;color:var(--ink-soft)}
+  .tipo-pill{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.03em}
+  .tipo-pill.ajuste_incorreto{background:var(--rosa-fundo);color:var(--rosa)}
+  .tipo-pill.add_vocabulario{background:var(--green-soft);color:var(--green)}
+  .tipo-pill.add_regra{background:var(--amber-soft);color:var(--amber)}
+  .acoes{display:flex;gap:8px;flex-shrink:0}
+
+  .add-row{display:flex;gap:8px;margin-bottom:18px}
+  .add-row input{flex:1;padding:11px 14px;border:1.5px solid var(--line);border-radius:10px;font-family:'Poppins',sans-serif;font-size:14px}
+  .add-row input:focus{outline:none;border-color:var(--rosa)}
+
+  .empty{text-align:center;color:var(--ink-soft);padding:30px;background:var(--surface);border:1px dashed var(--line);border-radius:12px;font-size:14px}
+  .vocab-item{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 16px;background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-bottom:8px}
+  .vocab-termo{font-weight:600}
+  .vocab-obs{font-size:12px;color:var(--ink-soft)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- LOGIN -->
+  <div class="login" id="loginBox">
+    <div class="sofia-name" style="margin-bottom:10px">Sof<span class="dot">.</span>ia</div>
+    <h2>Área administrativa</h2>
+    <p>Digite a senha para gerenciar o aprendizado da Sof.ia.</p>
+    <input type="password" id="senha" placeholder="Senha" autocomplete="current-password">
+    <div class="err" id="loginErr">Senha incorreta.</div>
+    <button class="btn" id="entrarBtn" style="width:100%">Entrar</button>
+  </div>
+
+  <!-- PAINEL -->
+  <div id="painel" style="display:none">
+    <header>
+      <div class="sofia-name">Sof<span class="dot">.</span>ia</div>
+      <span class="admin-tag">Admin</span>
+      <a href="index.html" class="nav-back">← Voltar ao revisor</a>
+    </header>
+    <p class="sub">Valide sugestões dos usuários e ensine a Sof.ia com vocabulário e regras personalizadas.</p>
+
+    <div class="tabs">
+      <button class="tab active" id="tabPend">Pendentes <span class="badge" id="badgePend">0</span></button>
+      <button class="tab" id="tabVocab">Vocabulário</button>
+      <button class="tab" id="tabRegras">Regras</button>
+    </div>
+
+    <!-- PENDENTES -->
+    <div class="panel-tab active" id="panelPend">
+      <div id="pendList"></div>
+    </div>
+
+    <!-- VOCABULARIO -->
+    <div class="panel-tab" id="panelVocab">
+      <div class="add-row">
+        <input type="text" id="novoTermo" placeholder="Nova palavra/expressão (ex: PagBank)">
+        <input type="text" id="novoTermoObs" placeholder="Observação (ex: marca)" style="max-width:200px">
+        <button class="btn green" id="addVocabBtn">Adicionar</button>
+      </div>
+      <div id="vocabList"></div>
+    </div>
+
+    <!-- REGRAS -->
+    <div class="panel-tab" id="panelRegras">
+      <div class="add-row">
+        <input type="text" id="novaRegra" placeholder="Nova regra (ex: sempre escrever 'e-mail' com hífen)">
+        <button class="btn green" id="addRegraBtn">Adicionar</button>
+      </div>
+      <div id="regrasList"></div>
+    </div>
+  </div>
+
+</div>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+/* ===================== CONFIGURE AQUI ===================== */
+const SUPABASE_URL = 'https://gwzktdthxiyspipsegkp.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd3emt0ZHRoeGl5c3BpcHNlZ2twIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0MTA0MDYsImV4cCI6MjA5NTk4NjQwNn0.J6c1G62IKTX8zhcEbZ2WcxKDy-mJVSN4gl4XMFNx9pk';
+const SENHA_ADMIN = 'digi2026'; // <<< TROQUE por uma senha sua
+/* ========================================================= */
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const $ = id => document.getElementById(id);
+const esc = s => (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+/* ---- login ---- */
+function tentarEntrar(){
+  if($('senha').value === SENHA_ADMIN){
+    sessionStorage.setItem('sofia_admin','1');
+    abrirPainel();
+  } else {
+    $('loginErr').classList.add('show');
+  }
+}
+$('entrarBtn').addEventListener('click', tentarEntrar);
+$('senha').addEventListener('keydown', e=>{ if(e.key==='Enter') tentarEntrar(); });
+
+function abrirPainel(){
+  $('loginBox').style.display='none';
+  $('painel').style.display='block';
+  carregarTudo();
+}
+// se já logou nesta sessão, abre direto
+if(sessionStorage.getItem('sofia_admin')==='1') abrirPainel();
+
+/* ---- tabs ---- */
+$('tabPend').addEventListener('click',()=>troca('Pend'));
+$('tabVocab').addEventListener('click',()=>troca('Vocab'));
+$('tabRegras').addEventListener('click',()=>troca('Regras'));
+function troca(t){
+  ['Pend','Vocab','Regras'].forEach(x=>{
+    $('tab'+x).classList.toggle('active', x===t);
+    $('panel'+x).classList.toggle('active', x===t);
+  });
+}
+
+async function carregarTudo(){ await Promise.all([carregarPendentes(), carregarVocab(), carregarRegras()]); }
+
+/* ---- pendentes ---- */
+async function carregarPendentes(){
+  const { data, error } = await supabase.from('feedbacks').select('*').eq('status','pendente').order('created_at',{ascending:false});
+  const list=$('pendList');
+  if(error){ list.innerHTML='<div class="empty">Erro ao carregar. Confira o SQL/policies.</div>'; return; }
+  $('badgePend').textContent = (data||[]).length;
+  if(!data || !data.length){ list.innerHTML='<div class="empty">Nenhuma sugestão pendente. 🎉</div>'; return; }
+  list.innerHTML='';
+  data.forEach(f=>{
+    const card=document.createElement('div'); card.className='card';
+    const tipoLabel = f.tipo==='ajuste_incorreto' ? 'Ajuste incorreto' : (f.tipo==='add_vocabulario' ? 'Add vocabulário' : 'Add regra');
+    card.innerHTML=`
+      <div class="card-row">
+        <div style="flex:1">
+          <span class="tipo-pill ${f.tipo}">${tipoLabel}</span>
+          <div style="margin-top:8px"><span class="swap-from">${esc(f.termo)}</span>${f.correto && f.tipo==='ajuste_incorreto' ? `<span class="arrow">→</span><span class="swap-to">${esc(f.correto)}</span>` : ''}</div>
+          <div class="detalhe">${esc(f.detalhe||'')}</div>
+          <div class="data" style="margin-top:6px">${new Date(f.created_at).toLocaleString('pt-BR')}</div>
+        </div>
+        <div class="acoes">
+          <button class="btn green sm" data-ok>Aprovar</button>
+          <button class="btn danger sm" data-no>Rejeitar</button>
+        </div>
+      </div>`;
+    card.querySelector('[data-ok]').addEventListener('click',()=>aprovar(f));
+    card.querySelector('[data-no]').addEventListener('click',()=>rejeitar(f.id));
+    list.appendChild(card);
+  });
+}
+
+async function aprovar(f){
+  // ajuste_incorreto e add_vocabulario -> viram vocabulário (palavra a ignorar)
+  if(f.tipo==='ajuste_incorreto' || f.tipo==='add_vocabulario'){
+    const termo = f.tipo==='ajuste_incorreto' ? f.termo : f.termo;
+    await supabase.from('vocabulario').insert({ termo: termo, observacao: f.tipo==='ajuste_incorreto'?'correção rejeitada pelo usuário':'sugerido pelo usuário', ativo:true });
+  } else if(f.tipo==='add_regra'){
+    await supabase.from('regras').insert({ regra: f.detalhe || f.termo, ativo:true });
+  }
+  await supabase.from('feedbacks').update({ status:'aprovado' }).eq('id', f.id);
+  carregarTudo();
+}
+async function rejeitar(id){
+  await supabase.from('feedbacks').update({ status:'rejeitado' }).eq('id', id);
+  carregarPendentes();
+}
+
+/* ---- vocabulário ---- */
+async function carregarVocab(){
+  const { data, error } = await supabase.from('vocabulario').select('*').order('created_at',{ascending:false});
+  const list=$('vocabList');
+  if(error){ list.innerHTML='<div class="empty">Erro ao carregar.</div>'; return; }
+  if(!data || !data.length){ list.innerHTML='<div class="empty">Vocabulário vazio. Adicione marcas e termos que não são erro.</div>'; return; }
+  list.innerHTML='';
+  data.forEach(v=>{
+    const el=document.createElement('div'); el.className='vocab-item';
+    el.innerHTML=`<div><span class="vocab-termo">${esc(v.termo)}</span> ${v.observacao?`<span class="vocab-obs">· ${esc(v.observacao)}</span>`:''}</div>
+      <button class="btn danger sm" data-del>Remover</button>`;
+    el.querySelector('[data-del]').addEventListener('click',async()=>{
+      await supabase.from('vocabulario').delete().eq('id',v.id); carregarVocab();
+    });
+    list.appendChild(el);
+  });
+}
+$('addVocabBtn').addEventListener('click',async()=>{
+  const termo=$('novoTermo').value.trim();
+  if(!termo) return;
+  await supabase.from('vocabulario').insert({ termo: termo, observacao: $('novoTermoObs').value.trim()||null, ativo:true });
+  $('novoTermo').value=''; $('novoTermoObs').value='';
+  carregarVocab();
+});
+
+/* ---- regras ---- */
+async function carregarRegras(){
+  const { data, error } = await supabase.from('regras').select('*').order('created_at',{ascending:false});
+  const list=$('regrasList');
+  if(error){ list.innerHTML='<div class="empty">Erro ao carregar.</div>'; return; }
+  if(!data || !data.length){ list.innerHTML='<div class="empty">Nenhuma regra. Adicione orientações de escrita personalizadas.</div>'; return; }
+  list.innerHTML='';
+  data.forEach(r=>{
+    const el=document.createElement('div'); el.className='vocab-item';
+    el.innerHTML=`<div>${esc(r.regra)}</div><button class="btn danger sm" data-del>Remover</button>`;
+    el.querySelector('[data-del]').addEventListener('click',async()=>{
+      await supabase.from('regras').delete().eq('id',r.id); carregarRegras();
+    });
+    list.appendChild(el);
+  });
+}
+$('addRegraBtn').addEventListener('click',async()=>{
+  const regra=$('novaRegra').value.trim();
+  if(!regra) return;
+  await supabase.from('regras').insert({ regra: regra, ativo:true });
+  $('novaRegra').value='';
+  carregarRegras();
+});
+</script>
+</body>
+</html>
