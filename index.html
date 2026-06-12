@@ -159,6 +159,7 @@
 
   footer{margin-top:54px;border-top:1px solid var(--line);padding-top:18px;font-family:'Poppins',sans-serif;font-size:11px;color:var(--ink-soft);line-height:1.9}
   footer b{color:var(--ink)}
+  .hist-toggle{display:block;margin:14px auto 0;font-size:13px;padding:9px 20px}
   footer a{color:var(--rosa);text-decoration:none;font-weight:600}
 
   /* ---- upload de doc ---- */
@@ -644,15 +645,25 @@ function fmtDate(iso){
   const d=new Date(iso);
   return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
 }
+let histData = [];
+let histExpanded = false;
 async function loadHistory(){
   if(!supabase) return;
   const { data, error } = await supabase.from('revisoes').select('*').order('created_at',{ascending:false}).limit(50);
   const list=$('histList');
   if(error){ list.innerHTML='<div class="hist-empty">Não consegui carregar o histórico. Confira as policies do banco.</div>'; return; }
-  $('histCount').textContent = data.length ? `(${data.length})` : '';
-  if(!data.length){ list.innerHTML='<div class="hist-empty">Nenhuma revisão ainda. Suas análises aparecem aqui.</div>'; return; }
+  histData = data || [];
+  histExpanded = false;
+  $('histCount').textContent = histData.length ? `(${histData.length})` : '';
+  renderHistory();
+}
+function renderHistory(){
+  const list=$('histList');
+  if(!histData.length){ list.innerHTML='<div class="hist-empty">Nenhuma revisão ainda. Suas análises aparecem aqui.</div>'; return; }
+  const LIMITE = 4;
+  const visiveis = histExpanded ? histData : histData.slice(0, LIMITE);
   list.innerHTML='';
-  data.forEach(h=>{
+  visiveis.forEach(h=>{
     const n=(h.erros||[]).length;
     const item=document.createElement('div'); item.className='hist-item';
     const thumb = h.image_url ? `<img class="hist-thumb" src="${h.image_url}" alt="">` : `<div class="hist-thumb"></div>`;
@@ -668,6 +679,16 @@ async function loadHistory(){
     });
     list.appendChild(item);
   });
+  // botão mostrar mais / menos
+  if(histData.length > LIMITE){
+    const btn=document.createElement('button');
+    btn.className='btn ghost hist-toggle';
+    btn.textContent = histExpanded
+      ? 'Mostrar menos'
+      : `Mostrar mais (${histData.length - LIMITE})`;
+    btn.addEventListener('click',()=>{ histExpanded=!histExpanded; renderHistory(); });
+    list.appendChild(btn);
+  }
 }
 async function removeHistory(id){
   if(!supabase) return;
