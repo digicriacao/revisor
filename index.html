@@ -271,7 +271,7 @@
     <div class="results-grid">
       <div class="col-art">
         <div class="panel">
-          <div class="panel-head"><span class="label">O que encontrei na arte</span><span class="tag" id="errCount">0</span></div>
+          <div class="panel-head"><span class="label">O que encontrei na arte <span id="iaLabel" style="font-size:10px;color:var(--ink-soft);text-transform:none;letter-spacing:0"></span></span><span class="tag" id="errCount">0</span></div>
           <div class="canvas" id="canvas"><img id="artImg" alt="arte analisada"></div>
         </div>
       </div>
@@ -578,6 +578,11 @@ async function analyze(){
 
     const localUrl = URL.createObjectURL(currentFile);
     renderResults(localUrl, errosFinal, blocos, textoCorrigido);
+    // mostra qual IA respondeu (diagnostico)
+    if (data && data._ia) {
+      const lbl = $('iaLabel');
+      if (lbl) lbl.textContent = 'via ' + data._ia;
+    }
     hideStatus();
     loadHistory();
   }catch(err){
