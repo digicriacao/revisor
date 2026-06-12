@@ -607,6 +607,7 @@ function drawBoxes(erros){
 }
 
 function renderResults(imgUrl, erros, blocos, textoPlano){
+  const _lbl = $('iaLabel'); if(_lbl) _lbl.textContent = '';
   const img = $('artImg');
   img.onload = ()=>drawBoxes(erros);
   img.src = imgUrl;
