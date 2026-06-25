@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gerador de News DUX</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,300;0,400;0,500;0,700;1,400;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="app">
+  <header class="header">
+    <div class="header-left">
+      <h1>Gerador de News DUX</h1>
+      <p>Crie blocos de conteúdo que se distribuem automaticamente em 2 colunas no desktop.</p>
+    </div>
+    <a href="receitas.html" class="header-back">← Voltar</a>
+  </header>
+
+  <div class="toolbar">
+    <input type="text" id="save-name" class="toolbar-input" placeholder="Nome da news (ex: News Dezembro 2025)">
+    <select id="load-select"></select>
+    <div class="toolbar-divider"></div>
+    <button class="btn btn-success" id="btn-save">Salvar</button>
+    <button class="btn btn-secondary" id="btn-new">Nova</button>
+    <button class="btn btn-danger" id="btn-delete">Excluir</button>
+    <div class="toolbar-divider"></div>
+    <button class="btn btn-ghost" id="btn-export" title="Baixar todas as news em .json">⤓ Exportar</button>
+    <button class="btn btn-ghost" id="btn-import" title="Restaurar news de um .json">⤴ Importar</button>
+    <input type="file" id="file-import" accept=".json" style="display:none;">
+  </div>
+
+  <div class="grid">
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Quadros da news</div>
+        <button class="btn btn-primary" id="btn-add-card">+ Novo quadro</button>
+      </div>
+      <div class="panel-body">
+
+        <div class="info-box">
+          Cada <strong>quadro</strong> vira um card branco no resultado. Os quadros se distribuem em <strong>2 colunas no desktop</strong> e <strong>1 coluna no mobile</strong>, automaticamente. Você pode reordená-los com as setas ↑↓.
+        </div>
+
+        <div id="cards-list"></div>
+
+        <div style="margin-top:12px;">
+          <button class="btn btn-primary" id="btn-add-card-bottom">+ Novo quadro</button>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="tabs">
+          <button class="tab active" data-view="preview">Preview</button>
+          <button class="tab" data-view="code">Código</button>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-secondary" id="btn-download">⤓ Baixar HTML</button>
+          <button class="btn btn-primary" id="btn-copy">📋 Copiar HTML</button>
+        </div>
+      </div>
+      <div class="preview-container" id="preview-pane"><iframe id="preview-frame"></iframe></div>
+      <div class="code-container" id="code-pane" style="display:none;"></div>
+    </div>
+
+  </div>
+
+  <p class="footer">CSS inline + Barlow do Google Fonts. Compatível com qualquer plataforma de site.</p>
+</div>
+
+<!-- Modal de link -->
+<div class="modal-backdrop" id="link-modal">
+  <div class="modal">
+    <h3 id="link-modal-title">Inserir link</h3>
+    <div class="field">
+      <label class="field-label">Texto exibido</label>
+      <input type="text" id="link-text" placeholder="Ex.: clique aqui">
+    </div>
+    <div class="field" style="margin-bottom:0;">
+      <label class="field-label">URL</label>
+      <input type="text" id="link-url" placeholder="https://...">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="link-cancel">Cancelar</button>
+      <button class="btn btn-primary" id="link-save">Aplicar</button>
+    </div>
+  </div>
+</div>
+
+<script src="shared.js"></script>
+<script>
+(function() {
+  'use strict';
+
+  let cards = [];
+  let nextId = 1;
+
+  function newCard(title, contentHtml) {
+    return { id: nextId++, title: title || '', contentHtml: contentHtml || '' };
+  }
+
+  function renderCardsList() {
+    const list = $('#cards-list');
+    list.innerHTML = '';
+
+    if (cards.length === 0) {
+      list.innerHTML = `<div style="text-align:center;padding:40px 20px;color:#94a3b8;font-size:14px;">
+        Nenhum quadro. Clique em <strong>+ Novo quadro</strong> acima para começar.
+      </div>`;
+      return;
+    }
+
+    cards.forEach((card, idx) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'news-card-form';
+      wrap.dataset.cardId = card.id;
+      wrap.innerHTML = `
+        <div class="news-card-header">
+          <div class="news-card-num">QUADRO ${idx + 1}</div>
+          <div class="news-card-actions">
+            <button data-action="up" ${idx === 0 ? 'disabled' : ''} title="Subir">↑</button>
+            <button data-action="down" ${idx === cards.length - 1 ? 'disabled' : ''} title="Descer">↓</button>
+            <button data-action="remove" class="danger" title="Remover quadro">×</button>
+          </div>
+        </div>
+        <div class="field" style="margin-bottom:10px;">
+          <label class="field-label">Título</label>
+          <input type="text" class="card-title" value="${escapeAttr(card.title)}" placeholder="Título do quadro">
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label class="field-label">Conteúdo</label>
+          <div class="editor-toolbar">
+            <button type="button" class="tb-btn" data-cmd="bold" title="Negrito"><strong>B</strong></button>
+            <button type="button" class="tb-btn" data-cmd="italic" title="Itálico"><em>I</em></button>
+            <button type="button" class="tb-btn" data-cmd="insertUnorderedList" title="Lista">≡</button>
+            <div class="tb-sep"></div>
+            <button type="button" class="tb-btn" data-action="link" title="Inserir/editar link">🔗</button>
+            <button type="button" class="tb-btn" data-action="unlink" title="Remover link">⛌</button>
+          </div>
+          <div class="editor" contenteditable="true" data-placeholder="Escreva o conteúdo do quadro aqui..."></div>
+        </div>
+      `;
+      list.appendChild(wrap);
+
+      const editorEl = wrap.querySelector('.editor');
+      editorEl.innerHTML = card.contentHtml || '';
+
+      const titleInput = wrap.querySelector('.card-title');
+      titleInput.addEventListener('input', () => {
+        const c = cards.find(x => x.id === card.id);
+        if (c) c.title = titleInput.value;
+        updateOutput();
+      });
+
+      RichEditor.init(editorEl, () => {
+        const c = cards.find(x => x.id === card.id);
+        if (c) c.contentHtml = editorEl.innerHTML;
+        updateOutput();
+      });
+
+      wrap.querySelectorAll('.tb-btn[data-cmd]').forEach(btn => {
+        btn.addEventListener('mousedown', (e) => e.preventDefault());
+        btn.addEventListener('click', () => {
+          RichEditor.applyCmd(btn.dataset.cmd, editorEl, () => {
+            const c = cards.find(x => x.id === card.id);
+            if (c) c.contentHtml = editorEl.innerHTML;
+            updateOutput();
+          });
+          RichEditor.updateToolbarState(wrap.querySelectorAll('.tb-btn[data-cmd]'));
+        });
+      });
+
+      wrap.querySelector('[data-action="link"]').addEventListener('mousedown', (e) => e.preventDefault());
+      wrap.querySelector('[data-action="link"]').addEventListener('click', () => {
+        LinkModal.open(editorEl, () => {
+          const c = cards.find(x => x.id === card.id);
+          if (c) c.contentHtml = editorEl.innerHTML;
+          updateOutput();
+        });
+      });
+      wrap.querySelector('[data-action="unlink"]').addEventListener('mousedown', (e) => e.preventDefault());
+      wrap.querySelector('[data-action="unlink"]').addEventListener('click', () => {
+        LinkModal.unlink(editorEl, () => {
+          const c = cards.find(x => x.id === card.id);
+          if (c) c.contentHtml = editorEl.innerHTML;
+          updateOutput();
+        });
+      });
+
+      editorEl.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+          e.preventDefault();
+          RichEditor.applyCmd('bold', editorEl, () => {
+            const c = cards.find(x => x.id === card.id);
+            if (c) c.contentHtml = editorEl.innerHTML;
+            updateOutput();
+          });
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'i') {
+          e.preventDefault();
+          RichEditor.applyCmd('italic', editorEl, () => {
+            const c = cards.find(x => x.id === card.id);
+            if (c) c.contentHtml = editorEl.innerHTML;
+            updateOutput();
+          });
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+          e.preventDefault();
+          LinkModal.open(editorEl, () => {
+            const c = cards.find(x => x.id === card.id);
+            if (c) c.contentHtml = editorEl.innerHTML;
+            updateOutput();
+          });
+        }
+      });
+
+      wrap.querySelector('[data-action="up"]')?.addEventListener('click', () => moveCard(card.id, -1));
+      wrap.querySelector('[data-action="down"]')?.addEventListener('click', () => moveCard(card.id, 1));
+      wrap.querySelector('[data-action="remove"]')?.addEventListener('click', () => removeCard(card.id));
+    });
+  }
+
+  function moveCard(id, delta) {
+    const idx = cards.findIndex(c => c.id === id);
+    if (idx < 0) return;
+    const newIdx = idx + delta;
+    if (newIdx < 0 || newIdx >= cards.length) return;
+    [cards[idx], cards[newIdx]] = [cards[newIdx], cards[idx]];
+    renderCardsList();
+    updateOutput();
+  }
+
+  function removeCard(id) {
+    if (!confirm('Remover este quadro?')) return;
+    cards = cards.filter(c => c.id !== id);
+    renderCardsList();
+    updateOutput();
+  }
+
+  function addCard() {
+    cards.push(newCard('', ''));
+    renderCardsList();
+    updateOutput();
+    setTimeout(() => {
+      const last = $('#cards-list').lastElementChild;
+      last?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      last?.querySelector('.card-title')?.focus();
+    }, 50);
+  }
+
+  $('#btn-add-card').addEventListener('click', addCard);
+  $('#btn-add-card-bottom').addEventListener('click', addCard);
+
+  LinkModal.initModal();
+
+  // ====== GERAR HTML ======
+  function generateHtml() {
+    const fontStack = "'Barlow','Helvetica Neue',Arial,sans-serif";
+    const fontBlock = `<link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,300;0,400;0,500;0,700;1,400;1,700&display=swap" rel="stylesheet">`;
+
+    const validCards = cards.filter(c => (c.title.trim() || (c.contentHtml || '').replace(/<[^>]+>/g, '').trim()));
+
+    if (validCards.length === 0) {
+      return `<!-- News DUX (vazio) -->
+${fontBlock}
+<div style="max-width:1100px;margin:0 auto;padding:40px 20px;text-align:center;color:#94a3b8;font-family:${fontStack};">
+  Adicione quadros para gerar o conteúdo.
+</div>`;
+    }
+
+    // Masonry balanceado
+    function cardWeight(card) {
+      const titleLen = (card.title || '').length * 2;
+      const textOnly = (card.contentHtml || '').replace(/<[^>]+>/g, '').trim();
+      const breaks   = ((card.contentHtml || '').match(/<(p|li|h\d|br)/g) || []).length * 40;
+      return titleLen + textOnly.length + breaks + 120;
+    }
+
+    const colEsq = [], colDir = [];
+    let pesoEsq = 0, pesoDir = 0;
+    validCards.forEach(card => {
+      const w = cardWeight(card);
+      if (pesoEsq <= pesoDir) { colEsq.push(card); pesoEsq += w; }
+      else                    { colDir.push(card); pesoDir += w; }
+    });
+
+    const cardStyle      = `background-color:#ffffff;border-radius:14px;padding:24px 26px;margin-bottom:12px;font-family:${fontStack};color:#1a1a1a;`;
+    const titleStyle     = `font-family:${fontStack};font-weight:700;font-size:18px;color:#0a0a0a;margin:0 0 12px 0;line-height:1.3;`;
+    const contentWrapStyle = `font-family:${fontStack};font-size:18px;line-height:1.6;color:#1a1a1a;`;
+
+    function renderCard(card) {
+      const tmpDiv = document.createElement('div');
+      tmpDiv.innerHTML = card.contentHtml || '';
+      const contentInline = serializeEditorToInline(tmpDiv, fontStack, { boldUnderline: false });
+      const titleHtml = card.title.trim() ? `<div style="${titleStyle}">${escapeHtml(card.title)}</div>` : '';
+      // Todos os cards mantêm margin-bottom:12px para garantir espaço
+      // quando as colunas empilham no mobile. A coluna wrapper controla
+      // o espaço entre colunas via padding.
+      return `<div style="${cardStyle}">${titleHtml}<div style="${contentWrapStyle}">${contentInline}</div></div>`;
+    }
+
+    const cardsEsq = colEsq.map(c => renderCard(c)).join('\n');
+    const cardsDir = colDir.map(c => renderCard(c)).join('\n');
+
+    // ================================================================
+    // LAYOUT RESPONSIVO — CSS externo via <link> no GitHub Pages
+    //
+    // O Incentify remove <style> e <script>, mas preserva <link rel="stylesheet">.
+    // O CSS fica hospedado em:
+    //   https://digicriacao.github.io/dux-editor/news-responsive.css
+    //
+    // Classes usadas:
+    //   .dux-news-wrap  → wrapper externo
+    //   .dux-news-grid  → flex container (row no desktop, column no mobile)
+    //   .dux-news-col   → cada coluna (flex:1 no desktop, width:100% no mobile)
+    //
+    // O CSS define:
+    //   desktop: flex-direction:row (2 colunas lado a lado)
+    //   mobile (@media max-width:640px): flex-direction:column (1 coluna)
+    // ================================================================
+
+    // ================================================================
+    // LAYOUT RESPONSIVO — flex-wrap + flex-basis
+    //
+    // Descoberta: o Incentify preserva flex:1 1 Xpx (flex-basis).
+    // Com flex-basis:400px em cada coluna:
+    //   - Desktop (> 800px): as 2 colunas cabem lado a lado
+    //   - Mobile  (< 800px): cada coluna ocupa 100% e empilha
+    //
+    // Sem CSS externo, sem <style>, sem <script>. 100% inline.
+    // Propriedades removidas pelo Incentify (não usar): gap, min-width,
+    // box-sizing, container-type.
+    // ================================================================
+
+    return `<!-- News DUX -->
+${fontBlock}
+<div style="max-width:1200px;margin:0 auto;padding:8px;">
+  <div style="display:flex;flex-wrap:wrap;align-items:flex-start;">
+    <div style="flex:1 1 400px;padding-right:6px;padding-bottom:12px;">
+${cardsEsq || '<!-- coluna vazia -->'}
+    </div>
+    <div style="flex:1 1 400px;padding-left:6px;">
+${cardsDir || '<!-- coluna vazia -->'}
+    </div>
+  </div>
+</div>
+<!-- Fim News DUX -->`;
+  }
+
+  let currentHtml = '';
+  function updateOutput() {
+    currentHtml = generateHtml();
+    const iframe = $('#preview-frame');
+    iframe.onload = () => {
+      try {
+        const doc = iframe.contentDocument;
+        if (!doc || !doc.body) return;
+        const h = Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight) + 4;
+        iframe.style.height = h + 'px';
+      } catch (e) {}
+    };
+    iframe.srcdoc = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{background:#e5e5e5;margin:0;padding:20px;}</style></head><body>${currentHtml}</body></html>`;
+    $('#code-pane').textContent = currentHtml;
+  }
+
+  $$('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      $$('.tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      if (tab.dataset.view === 'preview') { $('#preview-pane').style.display = ''; $('#code-pane').style.display = 'none'; }
+      else { $('#preview-pane').style.display = 'none'; $('#code-pane').style.display = ''; }
+    });
+  });
+
+  $('#btn-copy').addEventListener('click', async () => {
+    await copyText(currentHtml);
+    showToast('HTML copiado!');
+  });
+
+  $('#btn-download').addEventListener('click', () => {
+    const full = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>News DUX</title><style>body { background: #e5e5e5; margin: 0; padding: 24px 0; min-height: 100vh; }</style></head><body>${currentHtml}</body></html>`;
+    const name = $('#save-name').value.trim() || 'news-dux';
+    downloadFile(full, name.replace(/[^a-zA-Z0-9-_]/g, '_') + '.html');
+    showToast('Arquivo baixado!');
+  });
+
+  function getDataForSave() {
+    return { cards: cards.map(c => ({ title: c.title, contentHtml: c.contentHtml })) };
+  }
+
+  function loadData(data) {
+    nextId = 1;
+    cards = Array.isArray(data.cards) ? data.cards.map(c => newCard(c.title, c.contentHtml)) : [];
+    renderCardsList();
+    updateOutput();
+  }
+
+  function newData() { loadData({ cards: [] }); }
+
+  initSaveToolbar({
+    tipo: 'news',
+    getDataFn: getDataForSave,
+    loadDataFn: loadData,
+    newDataFn: newData,
+    fileNamePrefix: 'news-dux'
+  });
+
+  newData();
+})();
+</script>
+
+</body>
+</html>
