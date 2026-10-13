@@ -1,0 +1,43 @@
+# ============================================================
+#  SOF.IA - KEEP-ALIVE via GitHub Actions
+#  Caminho no repositorio: .github/workflows/keepalive.yml
+#
+#  Faz uma requisicao HTTP real ao banco do Supabase a cada 3
+#  dias. Isso conta como "atividade de usuario" e impede o
+#  Supabase de pausar o projeto no plano free.
+#
+#  CONFIGURACAO (uma vez):
+#  No repositorio do GitHub -> Settings -> Secrets and variables
+#  -> Actions -> New repository secret, crie os dois segredos:
+#    - SUPABASE_URL      (ex: https://xxxx.supabase.co)
+#    - SUPABASE_ANON_KEY (a anon key do projeto)
+# ============================================================
+
+name: Supabase Keep-Alive
+
+on:
+  schedule:
+    # A cada 3 dias, as 09:00 UTC (06:00 em Brasilia). Sintaxe cron.
+    - cron: "0 9 */3 * *"
+  # Permite rodar manualmente pelo botao "Run workflow" na aba Actions
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pingar o banco do Supabase
+        run: |
+          echo "Enviando ping ao Supabase para manter o projeto ativo..."
+          # Consulta leve a tabela 'revisoes' (limit 1). So precisa tocar o banco.
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/revisoes?select=id&limit=1" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
+          echo "Resposta HTTP: $HTTP_CODE"
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 400 ]; then
+            echo "✓ Ping OK — projeto mantido ativo."
+          else
+            echo "✗ Ping falhou (HTTP $HTTP_CODE). Verifique os segredos SUPABASE_URL e SUPABASE_ANON_KEY."
+            exit 1
+          fi
