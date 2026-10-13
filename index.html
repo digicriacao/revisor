@@ -40,6 +40,16 @@
   .divider{width:1px;height:26px;background:var(--line)}
   .sofia-name{font-weight:800;font-size:36px;letter-spacing:-.03em;line-height:1}
   .sofia-name .dot{color:var(--rosa)}
+
+  /* ---- barra de navegação (links Digi) ---- */
+  header{position:relative;z-index:4}
+  .topnav{display:flex;flex-wrap:wrap;gap:8px;margin-left:auto;align-items:center}
+  .topnav a{font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;color:var(--ink-soft);text-decoration:none;padding:7px 14px;border:1.5px solid var(--line);border-radius:8px;transition:.15s;white-space:nowrap}
+  .topnav a:hover{border-color:var(--rosa);color:var(--rosa);background:var(--rosa-fundo)}
+  @media(max-width:720px){
+    .topnav{margin-left:0;margin-top:12px;width:100%}
+    .topnav a{flex:1;text-align:center;padding:7px 8px;font-size:12px}
+  }
   .sofia-role{font-size:13px;color:var(--ink-soft);font-weight:400;margin-top:3px}
 
   /* ---- mascote Sofia ---- */
@@ -233,6 +243,12 @@
       <span class="logo-fallback" id="logoFb">digi</span>
       <div class="divider"></div>
       <div class="sofia-name">Sof<span class="dot">.</span>ia</div>
+      <nav class="topnav">
+        <a href="https://digicriacao.github.io/otimizador/" target="_blank" rel="noopener">Otimizador</a>
+        <a href="https://digicriacao.github.io/pauta/" target="_blank" rel="noopener">Pauta</a>
+        <a href="https://digicriacao.github.io/criadigi/" target="_blank" rel="noopener">CriaDigi</a>
+        <a href="https://reguas.digi.ag" target="_blank" rel="noopener">Digi Réguas</a>
+      </nav>
     </header>
     <p class="sub">Oi! Eu sou a <strong>Sof.ia</strong> — reviso textos de artes, PDFs e apresentações. Me manda o arquivo e eu cuido do resto. 🎯</p>
 
@@ -330,8 +346,8 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
 /* ===================== CONFIGURE AQUI ===================== */
-const SUPABASE_URL = 'https://gwzktdthxiyspipsegkp.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd3emt0ZHRoeGl5c3BpcHNlZ2twIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0MTA0MDYsImV4cCI6MjA5NTk4NjQwNn0.J6c1G62IKTX8zhcEbZ2WcxKDy-mJVSN4gl4XMFNx9pk';
+const SUPABASE_URL = 'https://brhizhbdsvbeywqekiyu.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyaGl6aGJkc3ZiZXl3cWVraXl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE5MTQwMDAsImV4cCI6MjEwNzQ5MDAwMH0.L9zFggc217MPBFUhHFb515nfsNZBCya96WWsTePLsco';
 /* ========================================================= */
 
 const configured = !SUPABASE_URL.startsWith('COLE_') && !SUPABASE_ANON_KEY.startsWith('COLE_');
