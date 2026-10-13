@@ -43,9 +43,13 @@
 
   /* ---- barra de navegação (links Digi) ---- */
   header{position:relative;z-index:4}
-  .topnav{display:flex;flex-wrap:wrap;gap:8px;margin-left:auto;align-items:center}
-  .topnav a{font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;color:var(--ink-soft);text-decoration:none;padding:7px 14px;border:1.5px solid var(--line);border-radius:8px;transition:.15s;white-space:nowrap}
+  .topnav{display:flex;flex-wrap:wrap;gap:8px;margin-left:auto;align-items:center;justify-content:flex-end}
+  .topnav a{font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;color:var(--ink-soft);text-decoration:none;padding:7px 14px;border:1.5px solid var(--line);border-radius:8px;transition:.15s;white-space:nowrap;background:var(--surface)}
   .topnav a:hover{border-color:var(--rosa);color:var(--rosa);background:var(--rosa-fundo)}
+  /* em telas largas, reserva o espaco da mascote a direita para os botoes nao ficarem atras dela */
+  @media(min-width:960px){
+    .topnav{max-width:calc(100% - 360px)}
+  }
   @media(max-width:720px){
     .topnav{margin-left:0;margin-top:12px;width:100%}
     .topnav a{flex:1;text-align:center;padding:7px 8px;font-size:12px}
